@@ -6,10 +6,12 @@ import javax.swing.GroupLayout.Alignment;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.LayoutStyle.ComponentPlacement;
-
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.JSlider;
 
 public class Window
@@ -18,10 +20,11 @@ public class Window
 
 	private VideoController videoController;
 	private VideoPanel videoPanel;
+	private JFileChooser fileChooser;
 	private JButton btnLoad;
 	private JButton btnPlay;
 	static JSlider videoProgressSlider;
-	
+
 	public Window()
 	{
 		videoController = new VideoController();
@@ -38,6 +41,11 @@ public class Window
 		videoPanel = new VideoPanel(videoController);
 		videoPanel.setBackground(new Color(255, 255, 255));
 
+		fileChooser = new JFileChooser("res/");
+		fileChooser.setLocation(0, 0);
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("Video", "mp4");
+		fileChooser.setFileFilter(filter);
+
 		btnLoad = new JButton("Load");
 		btnPlay = new JButton(">");
 		btnPlay.setEnabled(false);
@@ -48,17 +56,26 @@ public class Window
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				videoPanel.BufferReady();
+				int fileReturn = fileChooser.showOpenDialog(btnLoad);
 
-				videoProgressSlider.setMaximum(videoPanel.getNumFrames());
-				btnPlay.setEnabled(true);
+				if (fileReturn == JFileChooser.APPROVE_OPTION)
+				{
+					File file = fileChooser.getSelectedFile();
+					videoPanel.loadVideo(file.getAbsolutePath());
+
+					videoPanel.BufferReady();
+
+					videoProgressSlider.setMaximum(videoPanel.getNumFrames());
+					videoProgressSlider.setValue(0);
+					btnPlay.setEnabled(true);
+				}
 			}
 		});
 		btnPlay.addActionListener(new ActionListener()
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				if(videoController.playing)
+				if (videoController.playing)
 				{
 					btnPlay.setText(">");
 					videoController.playing = false;
