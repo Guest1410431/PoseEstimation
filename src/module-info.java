@@ -4,7 +4,7 @@
 /**
  * 
  */
-module DiscGolfPoseEstimation
+module PoseEstimation
 {
 	requires java.desktop;
 	requires opencv;

@@ -18,7 +18,6 @@ import org.opencv.videoio.Videoio;
 
 public class VideoPanel extends JPanel
 {
-	private final static String VIDEO_PATH = "res/form_test_1.mp4";
 	private static final long serialVersionUID = 1L;
 
 	private VideoController controller;
@@ -30,19 +29,21 @@ public class VideoPanel extends JPanel
 
 	private int numFrames;
 
+	private String filePath;
+
 	private static VideoCapture video;
 
 	public VideoPanel(VideoController controller)
 	{
 		this.controller = controller;
-		loadVideo();
 	}
 
-	public void loadVideo()
+	public void loadVideo(String filePath)
 	{
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
-		video = new VideoCapture(VIDEO_PATH);
+		this.filePath = filePath;
+		video = new VideoCapture(filePath);
 		frame = new Mat();
 		numFrames = (int) video.get(Videoio.CAP_PROP_FRAME_COUNT);
 	}
@@ -68,7 +69,7 @@ public class VideoPanel extends JPanel
 		{
 			video.release();
 		}
-		video.open(VIDEO_PATH);
+		video.open(filePath);
 		frame = new Mat();
 
 		videoThread = new Thread(movRunner);
@@ -83,23 +84,23 @@ public class VideoPanel extends JPanel
 		public void run()
 		{
 			boolean frameRefresh = true;
-			
+
 			while (true)
 			{
 				int seekFrame = controller.latestSeekFrame.getAndSet(-1);
-				
+
 				if (seekFrame >= 0)
 				{
 					controller.frame = seekFrame;
 					video.set(Videoio.CAP_PROP_POS_FRAMES, seekFrame);
 					frameRefresh = true;
 				}
-				if(frameRefresh)
+				if (frameRefresh)
 				{
 					if (!video.read(frame) || frame.empty())
 					{
-						System.out.println("Video Ended");
-						return;
+						controller.playing = false;
+						continue;
 					}
 					imgBuffer = matToBufferedImage(frame);
 					repaint();
@@ -140,6 +141,7 @@ public class VideoPanel extends JPanel
 	protected void paintComponent(Graphics g)
 	{
 		super.paintComponent(g);
+
 		if (imgBuffer != null)
 		{
 			Graphics2D g2d = (Graphics2D) g.create();
