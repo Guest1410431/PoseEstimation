@@ -32,4 +32,14 @@ public class Tensor
 	{
 		return shape;
 	}
+
+	public void set(int y, int x, int c, float value)
+	{
+		int outWidth = shape[2];
+		int outChannels = shape[3];
+
+		int idx = y * (outWidth * outChannels) + x * outChannels + c;
+
+		data[idx] = value;
+	}
 }
