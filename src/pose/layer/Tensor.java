@@ -2,25 +2,65 @@ package pose.layer;
 
 public class Tensor
 {
+	private final int batchSize;
+	private final int channels;
+	private final int height;
+	private final int width;
+
 	private final float[] data;
-	private final int[] shape;
 
-	public Tensor(int... shape)
+	public Tensor(int batchSize, int channels, int height, int width)
 	{
-		this.shape = shape;
-		int size = 1;
+		this.batchSize = batchSize;
+		this.channels = channels;
+		this.height = height;
+		this.width = width;
 
-		for (int dim : shape)
-		{
-			size *= dim;
-		}
-		this.data = new float[size];
+		this.data = new float[batchSize * channels * height * width];
 	}
 
-	public Tensor(float[] data, int... shape)
+	public Tensor(int batchSize, int channels, int height, int width, float[] data)
 	{
+		this.batchSize = batchSize;
+		this.channels = channels;
+		this.height = height;
+		this.width = width;
 		this.data = data;
-		this.shape = shape;
+	}
+
+	public float get(int batch, int channel, int y, int x)
+	{
+		return data[index(batch, channel, y, x)];
+	}
+
+	public void set(int batch, int channel, int y, int x, float value)
+	{
+		data[index(batch, channel, y, x)] = value;
+	}
+
+	private int index(int batch, int channel, int y, int x)
+	{
+		return ((batch * channels + channel) * height + y) * width + x;
+	}
+
+	public int getBatchSize()
+	{
+		return batchSize;
+	}
+
+	public int getChannels()
+	{
+		return channels;
+	}
+
+	public int getHeight()
+	{
+		return height;
+	}
+
+	public int getWidth()
+	{
+		return width;
 	}
 
 	public float[] getData()
@@ -28,18 +68,22 @@ public class Tensor
 		return data;
 	}
 
-	public int[] getShape()
+	public int size()
 	{
-		return shape;
+		return data.length;
 	}
 
-	public void set(int y, int x, int c, float value)
+	public void fill(float value)
 	{
-		int outWidth = shape[2];
-		int outChannels = shape[3];
+		for (int i = 0; i < data.length; i++)
+		{
+			data[i] = value;
+		}
+	}
 
-		int idx = y * (outWidth * outChannels) + x * outChannels + c;
-
-		data[idx] = value;
+	@Override
+	public String toString()
+	{
+		return "Tensor[" + batchSize + ", " + channels + ", " + height + ", " + width + "]";
 	}
 }

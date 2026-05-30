@@ -11,6 +11,7 @@ public class ConvolutionalLayer extends Layer
 	private final int kernalSize;
 	private final int stride;
 	private final int padding;
+	
 	private final float[] weights;
 	private final float[] bias;
 
@@ -36,43 +37,46 @@ public class ConvolutionalLayer extends Layer
 	@Override
 	public Tensor forward(Tensor input)
 	{
-		int[] shape = input.getShape();
-		int inHeight = shape[1];
-		int inWidth = shape[2];
+		int batchSize = input.getBatchSize();
+		int inHeight = input.getHeight();
+		int inWidth = input.getWidth();
 
 		int outHeight = Math.floorDiv(inHeight + (padding * 2) - kernalSize, stride) + 1;
 		int outWidth = Math.floorDiv(inWidth + (padding * 2) - kernalSize, stride) + 1;
 
-		Tensor output = new Tensor(new int[] { outWidth, outHeight, outChannels });
+		Tensor output = new Tensor(batchSize, outWidth, outHeight, outChannels );
 
-		for (int chout = 0; chout < outChannels; chout++)
+		for(int batch =0; batch < batchSize; batch++)
 		{
-			for (int outH = 0; outH < outHeight; outH++)
+			for (int chout = 0; chout < outChannels; chout++)
 			{
-				for (int outW = 0; outW < outWidth; outW++)
+				for (int outH = 0; outH < outHeight; outH++)
 				{
-					float sum = bias[chout];
-
-					for (int chin = 0; chin < inChannels; chin++)
+					for (int outW = 0; outW < outWidth; outW++)
 					{
-						for (int kernalX = 0; kernalX < kernalSize; kernalX++)
+						float sum = bias[chout];
+
+						for (int chin = 0; chin < inChannels; chin++)
 						{
-							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+							for (int kernalX = 0; kernalX < kernalSize; kernalX++)
 							{
-								int inX = outW * stride + kernalX - padding;
-								int inY = outH * stride + kernalY - padding;
-
-								if (inY >= 0 && inX >= 0 && inY < inHeight && inX < inWidth)
+								for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 								{
-									int dataIndex = inY * (inWidth * inChannels) + inX * inChannels + chin;
-									int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
+									int inX = outW * stride + kernalX - padding;
+									int inY = outH * stride + kernalY - padding;
 
-									sum += input.getData()[dataIndex] * weights[weightIndex];
+									if (inY >= 0 && inX >= 0 && inY < inHeight && inX < inWidth)
+									{
+										int dataIndex = inY * (inWidth * inChannels) + inX * inChannels + chin;
+										int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
+
+										sum += input.getData()[dataIndex] * weights[weightIndex];
+									}
 								}
 							}
 						}
+						output.set(batch, outH, outW, chout, sum);
 					}
-					output.set(outH, outW, chout, sum);
 				}
 			}
 		}
