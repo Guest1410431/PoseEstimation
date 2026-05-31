@@ -15,7 +15,8 @@ public class DownSampleLayer extends Layer
 	@Override
 	public Tensor forward(Tensor input)
 	{
-		// TODO: Pooling
+		// Max pooling
+		
 		int batchSize = input.getBatchSize();
 		int channels = input.getChannels();
 		int inHeight = input.getHeight();
@@ -25,9 +26,6 @@ public class DownSampleLayer extends Layer
 		int outWidth = (inWidth - kernalSize) / stride + 1;
 
 		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
-
-		float[] inData = input.getData();
-		float[] outData = output.getData();
 
 		for(int batch = 0; batch < batchSize; batch++)
 		{
