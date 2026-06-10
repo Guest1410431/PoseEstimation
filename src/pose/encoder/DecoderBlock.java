@@ -12,17 +12,15 @@ public class DecoderBlock extends Layer
 {
 	private final Sequential sequential;
 	private final SkipConnection skip;
-	
+
 	public DecoderBlock(int inC, int outC, SkipConnection skip)
 	{
 		this.skip = skip;
-		
-		sequential = new Sequential()
-				.add(new UpSampleLayer(2))
-				.add(new ConvolutionalLayer(inC +outC, outC, 3, 1, 1))
-				.add(new ActivationLayer());
+
+		sequential = new Sequential().add(new UpSampleLayer(2)).add(new ConvolutionalLayer(inC + outC, outC, 3, 1, 1)).add(new ActivationLayer());
 
 	}
+
 	@Override
 	public Tensor forward(Tensor input)
 	{
@@ -30,11 +28,46 @@ public class DecoderBlock extends Layer
 		Tensor merged = concat(input, skipTensor);
 		return sequential.forward(merged);
 	}
-	
+
 	private Tensor concat(Tensor input, Tensor skipTensor)
 	{
-		// TODO: channel-wise concatenation
+		if (input.getBatchSize() != skipTensor.getBatchSize() || input.getHeight() != skipTensor.getHeight() || input.getWidth() != skipTensor.getWidth())
+		{
+			throw new IllegalArgumentException("Cannot concatenate tensors with different spatial dimensions");
+		}
+		int inChannels = input.getChannels();
+		int skipChannels = skipTensor.getChannels();
+		int inHeight = input.getHeight();
+		int inWidth = input.getWidth();
+		int skipHeight = skipTensor.getHeight();
+		int skipWidth = skipTensor.getWidth();
 		
-		return input;
+		int outputChannels = inChannels + skipChannels;
+		Tensor output = new Tensor(input.getBatchSize(), outputChannels, inHeight, inWidth);
+		
+		for (int i = 0; i < output.getBatchSize(); i++)
+		{
+			for (int h = 0; h < inChannels; h++)
+			{
+				for (int y = 0; y < inHeight; y++)
+				{
+					for (int x = 0; x < inWidth; x++)
+					{
+						output.set(i, h, y, x, input.get(i, h, y, x));
+					}
+				}
+			}
+			for (int h = 0; h < skipChannels; h++)
+			{
+				for (int y = 0; y < skipHeight; y++)
+				{
+					for (int x = 0; x < skipWidth; x++)
+					{
+						output.set(i, h + inChannels, y, x, skipTensor.get(i, h, y, x));
+					}
+				}
+			}
+		}
+		return output;
 	}
 }
