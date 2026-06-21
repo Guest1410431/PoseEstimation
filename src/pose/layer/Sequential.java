@@ -25,4 +25,11 @@ public class Sequential extends Layer
 		return tensor;
 	}
 
+	@Override
+	public Tensor backward(Tensor gradient)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

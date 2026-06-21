@@ -16,4 +16,11 @@ public class ActivationLayer extends Layer
 		}
 		return input;
 	}
+
+	@Override
+	public Tensor backward(Tensor input)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

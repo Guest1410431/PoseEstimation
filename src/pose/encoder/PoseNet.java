@@ -42,4 +42,11 @@ public class PoseNet extends Layer
 		
 		return convolution.forward(tensor6);
 	}
+
+	@Override
+	public Tensor backward(Tensor gradient)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
