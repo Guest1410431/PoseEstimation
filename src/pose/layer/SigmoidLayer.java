@@ -13,4 +13,11 @@ public class SigmoidLayer extends Layer
 		}
 		return input;
 	}
+
+	@Override
+	public Tensor backward(Tensor gradient)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

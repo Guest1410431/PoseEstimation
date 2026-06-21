@@ -49,4 +49,11 @@ public class UpSampleLayer extends Layer
 		}
 		return output;
 	}
+
+	@Override
+	public Tensor backward(Tensor gradient)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
