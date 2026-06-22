@@ -39,7 +39,6 @@ public class EncoderBlock extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return sequential.backward(gradient);
 	}
 }
