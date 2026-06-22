@@ -38,6 +38,11 @@ public class Tensor
 		data[index(batch, channel, y, x)] = value;
 	}
 
+	public void add(int batch, int channel, int y, int x, float value)
+	{
+		data[index(batch, channel, y, x)] += value;
+	}
+
 	private int index(int batch, int channel, int y, int x)
 	{
 		return ((batch * channels + channel) * height + y) * width + x;
