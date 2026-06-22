@@ -53,7 +53,37 @@ public class UpSampleLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		int batchSize = gradient.getBatchSize();
+		int channels = gradient.getChannels();
+		int outHeight = gradient.getHeight() / scale;
+		int outWidth = gradient.getWidth() / scale;
+		
+		Tensor gradOutput = new Tensor(batchSize, channels, outHeight, outWidth);
+		
+		for (int batch = 0; batch < batchSize; batch++)
+		{
+			for (int channel = 0; channel < channels; channel++)
+			{
+				for (int y = 0; y < outHeight; y++)
+				{
+					for (int x = 0; x < outWidth; x++)
+					{
+						float sum = 0f; 
+						int startY = y * scale;
+						int startX = x*scale;
+						
+						for(int dy = 0; dy<scale; dy++)
+						{
+							for(int dx = 0; dx<scale; dx++)
+							{
+								sum += gradient.get(batch, channel, startY + dy, startX + dx);
+							}
+						}
+						gradOutput.set(batch, channel, y, x, sum);
+					}
+				}
+			}
+		}
+		return gradOutput;
 	}
 }

@@ -5,20 +5,20 @@ import java.util.List;
 
 public class Sequential extends Layer
 {
-	private final List<Layer>layers = new ArrayList<Layer>();
-	
+	private final List<Layer> layers = new ArrayList<Layer>();
+
 	public Sequential add(Layer layer)
 	{
 		layers.add(layer);
 		return this;
 	}
-	
+
 	@Override
 	public Tensor forward(Tensor input)
 	{
 		Tensor tensor = input;
-		
-		for(Layer layer : layers)
+
+		for (Layer layer : layers)
 		{
 			tensor = layer.forward(tensor);
 		}
@@ -28,8 +28,10 @@ public class Sequential extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		for (int i = layers.size() - 1; i >= 0; i--)
+		{
+			gradient = layers.get(i).backward(gradient);
+		}
+		return gradient;
 	}
-
 }

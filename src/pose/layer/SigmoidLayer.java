@@ -5,19 +5,28 @@ public class SigmoidLayer extends Layer
 	@Override
 	public Tensor forward(Tensor input)
 	{
-		float[] data = input.getData();
-
-		for (int i = 0; i < data.length; i++)
+		this.input = input;
+		
+		output = new Tensor(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		
+		for(int i=0; i<input.size(); i++)
 		{
-			data[i] = 1f / (1f + (float)Math.exp(-data[i]));
+			output.getData()[i] = 1f / (1f + (float)Math.exp(-input.getData()[i]));
 		}
-		return input;
+		return output;
 	}
 
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		Tensor gradOutput = new Tensor(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
+		
+		for(int i=0; i<output.size(); i++)
+		{
+			float sigmoid = output.getData()[i];
+			
+			gradOutput.getData()[i] = gradOutput.getData()[i] * sigmoid * (1f-sigmoid);
+		}
+		return gradOutput;
 	}
 }
