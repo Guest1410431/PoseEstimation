@@ -110,13 +110,13 @@ public class ConvolutionalLayer extends Layer
 		float[] gradData = gradient.getData();
 		float[] gradInputData = gradientInput.getData();
 
-		for (int batch = 0; batch < gradient.getBatchSize(); batch++)
+		for (int batch = 0; batch < batchSize; batch++)
 		{
-			for (int outY = 0; outY < gradient.getHeight(); outY++)
+			for (int outY = 0; outY < outHeight; outY++)
 			{
-				for (int outX = 0; outX < gradient.getWidth(); outX++)
+				for (int outX = 0; outX < outWidth; outX++)
 				{
-					for (int chout = 0; chout < gradient.getChannels(); chout++)
+					for (int chout = 0; chout < outChannels; chout++)
 					{
 						int gradIndex = ((batch * outHeight + outY) * outWidth + outX) * outChannels + chout;
 						float grad = gradData[gradIndex];
