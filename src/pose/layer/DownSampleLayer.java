@@ -18,7 +18,7 @@ public class DownSampleLayer extends Layer
 	public Tensor forward(Tensor input)
 	{
 		// Max pooling
-
+		this.input = input;
 		int batchSize = input.getBatchSize();
 		int channels = input.getChannels();
 		int inHeight = input.getHeight();
@@ -31,7 +31,7 @@ public class DownSampleLayer extends Layer
 
 		maxValIndexY = new int[batchSize][channels][outHeight][outWidth];
 		maxValIndexX = new int[batchSize][channels][outHeight][outWidth];
-		
+
 		for (int batch = 0; batch < batchSize; batch++)
 		{
 			for (int channel = 0; channel < channels; channel++)

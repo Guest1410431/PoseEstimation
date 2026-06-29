@@ -1,8 +1,8 @@
 package pose.trainer;
 
-import pose.encoder.Network;
+import pose.layer.Layer;
 
 public interface Optimizer
 {
-	 void step(Network network);
+	 void step(Layer layer);
 }

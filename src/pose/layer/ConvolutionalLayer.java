@@ -12,7 +12,7 @@ public class ConvolutionalLayer extends Layer
 	private final int padding;
 	private int batchSize;
 
-	private final float[] weights;
+	private float[] weights;
 	private final float[] bias;
 	private float[] weightGradients;
 	private float[] biasGradients;
@@ -55,32 +55,32 @@ public class ConvolutionalLayer extends Layer
 		{
 			for (int chout = 0; chout < outChannels; chout++)
 			{
-				for (int outH = 0; outH < outHeight; outH++)
+				for (int outY = 0; outY < outHeight; outY++)
 				{
-					for (int outW = 0; outW < outWidth; outW++)
+					for (int outX = 0; outX < outWidth; outX++)
 					{
 						float sum = bias[chout];
 
 						for (int chin = 0; chin < inChannels; chin++)
 						{
-							for (int kernalX = 0; kernalX < kernalSize; kernalX++)
+							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 							{
-								for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+								for (int kernalX = 0; kernalX < kernalSize; kernalX++)
 								{
-									int inX = outW * stride + kernalX - padding;
-									int inY = outH * stride + kernalY - padding;
+									int inY = outY * stride + kernalY - padding;
+									int inX = outX * stride + kernalX - padding;
 
-									if (inY >= 0 && inX >= 0 && inY < inHeight && inX < inWidth)
+									if (inY < 0 || inX < 0 || inY >= inHeight || inX >= inWidth)
 									{
-										int dataIndex = inY * (inWidth * inChannels) + inX * inChannels + chin;
-										int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
-
-										sum += input.getData()[dataIndex] * weights[weightIndex];
+										continue;
 									}
+									int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
+
+									sum += input.get(batch, chin, inY, inX) * weights[weightIndex];
 								}
 							}
 						}
-						output.set(batch, chout, outH, outW, sum);
+						output.set(batch, chout, outY, outX, sum);
 					}
 				}
 			}
@@ -115,9 +115,8 @@ public class ConvolutionalLayer extends Layer
 				{
 					for (int chout = 0; chout < outChannels; chout++)
 					{
-						int gradIndex = ((batch * outHeight + outY) * outWidth + outX) * outChannels + chout;
-						float grad = gradData[gradIndex];
-						
+						float grad = gradient.get(batch, chout, outY, outX);
+
 						biasGradients[chout] += grad;
 
 						for (int kernalY = 0; kernalY < kernalSize; kernalY++)
@@ -133,14 +132,13 @@ public class ConvolutionalLayer extends Layer
 								}
 								for (int chin = 0; chin < inChannels; chin++)
 								{
-									int inputIndex = ((batch * inHeight + inY) * inWidth + inX) * inChannels + chin;
-									int weightIndex = ((chout * inChannels + chin) * kernalSize + kernalY) * kernalSize + kernalX;
+									float inputValue = input.get(batch, chin, inY, inX);
 
-									float inputValue = inputData[inputIndex];
-									float weightValue = weights[weightIndex];
+									int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
 
 									weightGradients[weightIndex] += grad * inputValue;
-									gradInputData[inputIndex] += grad * weightValue;
+
+									gradientInput.add(batch, chin, inY, inX, grad * weights[weightIndex]);
 								}
 							}
 						}
@@ -150,29 +148,44 @@ public class ConvolutionalLayer extends Layer
 		}
 		return gradientInput;
 	}
-	
+
 	@Override
 	public void updateWeights(float learningRate)
 	{
-	    float scale = 1.0f / batchSize;
+		float scale = 1.0f / batchSize;
 
-	    for (int i = 0; i < weights.length; i++)
-	    {
-	        weights[i] -= learningRate * weightGradients[i] * scale;
-	    }
-	    for (int i = 0; i < bias.length; i++)
-	    {
-	        bias[i] -= learningRate * biasGradients[i] * scale;
-	    }
+		for (int i = 0; i < weights.length; i++)
+		{
+			weights[i] -= learningRate * weightGradients[i] * scale;
+		}
+		for (int i = 0; i < bias.length; i++)
+		{
+			bias[i] -= learningRate * biasGradients[i] * scale;
+		}
 	}
-	
-	private static void uniform(float[]array, double limit)
+
+	private static void uniform(float[] array, double limit)
 	{
 		Random random = new Random();
-		
-		for(int i=0; i<array.length; i++)
+
+		for (int i = 0; i < array.length; i++)
 		{
-			array[i] = (float)((random.nextDouble() * 2 - 1) * limit);
+			array[i] = (float) ((random.nextDouble() * 2 - 1) * limit);
 		}
+	}
+
+	public float[] getWeights()
+	{
+		return weights;
+	}
+
+	public void setWeights(float[] weights)
+	{
+		this.weights = weights;
+	}
+
+	public float[] getWeightGradients()
+	{
+		return weightGradients;
 	}
 }

@@ -13,7 +13,7 @@ public class UpSampleLayer extends Layer
 	public Tensor forward(Tensor input)
 	{
 		// Nearest Neighbors
-
+		this.input = input;
 		int batchSize = input.getBatchSize();
 		int channels = input.getChannels();
 		int inHeight = input.getHeight();
@@ -57,9 +57,9 @@ public class UpSampleLayer extends Layer
 		int channels = gradient.getChannels();
 		int outHeight = gradient.getHeight() / scale;
 		int outWidth = gradient.getWidth() / scale;
-		
+
 		Tensor gradOutput = new Tensor(batchSize, channels, outHeight, outWidth);
-		
+
 		for (int batch = 0; batch < batchSize; batch++)
 		{
 			for (int channel = 0; channel < channels; channel++)
@@ -68,13 +68,13 @@ public class UpSampleLayer extends Layer
 				{
 					for (int x = 0; x < outWidth; x++)
 					{
-						float sum = 0f; 
+						float sum = 0f;
 						int startY = y * scale;
-						int startX = x*scale;
-						
-						for(int dy = 0; dy<scale; dy++)
+						int startX = x * scale;
+
+						for (int dy = 0; dy < scale; dy++)
 						{
-							for(int dx = 0; dx<scale; dx++)
+							for (int dx = 0; dx < scale; dx++)
 							{
 								sum += gradient.get(batch, channel, startY + dy, startX + dx);
 							}

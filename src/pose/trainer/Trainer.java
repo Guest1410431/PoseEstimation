@@ -1,18 +1,18 @@
 package pose.trainer;
 
-import pose.encoder.Network;
+import pose.layer.Layer;
 import pose.layer.Tensor;
 
 public class Trainer
 {
-	private Network network;
+	private Layer layer;
 	private Dataset dataset;
 	private Optimizer optimizer;
 	private LossFunction lossFunction;
 
-	public Trainer(Network network, Dataset dataset, Optimizer optimizer, LossFunction lossFunction)
+	public Trainer(Layer layer, Dataset dataset, Optimizer optimizer, LossFunction lossFunction)
 	{
-		this.network = network;
+		this.layer = layer;
 		this.dataset = dataset;
 		this.optimizer = optimizer;
 		this.lossFunction = lossFunction;
@@ -30,15 +30,15 @@ public class Trainer
 			{
 				TrainingSet sample = dataset.get(i);
 				
-				Tensor prediction = network.forward(sample.getImage());
+				Tensor prediction = layer.forward(sample.getImage());
 				
 				float loss = lossFunction.forward(prediction, sample.getTargetHeatmaps());
 				epochLoss += loss;
 				
 				Tensor gradient = lossFunction.backward(prediction, sample.getTargetHeatmaps());
 				
-				network.backward(gradient);
-				optimizer.step(network);
+				layer.backward(gradient);
+				optimizer.step(layer);
 			}
 			System.out.println("Epoch " + epoch + " Loss: " + epochLoss / dataset.size());
 		}

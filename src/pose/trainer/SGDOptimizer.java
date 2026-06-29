@@ -1,6 +1,5 @@
 package pose.trainer;
 
-import pose.encoder.Network;
 import pose.layer.Layer;
 
 public class SGDOptimizer implements Optimizer
@@ -13,11 +12,8 @@ public class SGDOptimizer implements Optimizer
 	}
 
 	@Override
-	public void step(Network network)
+	public void step(Layer layer)
 	{
-		for (Layer layer : network.getLayers())
-		{
-			layer.updateWeights(learningRate);
-		}
+		layer.updateWeights(learningRate);
 	}
 }
