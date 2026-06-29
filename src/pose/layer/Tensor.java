@@ -43,6 +43,18 @@ public class Tensor
 		data[index(batch, channel, y, x)] += value;
 	}
 
+	public void add(Tensor other)
+	{
+		if (batchSize != other.batchSize || channels != other.channels || height != other.height || width != other.width)
+		{
+			throw new IllegalArgumentException("Tensor dimensions must match.");
+		}
+		for (int i = 0; i < data.length; i++)
+		{
+			data[i] += other.data[i];
+		}
+	}
+
 	private int index(int batch, int channel, int y, int x)
 	{
 		return ((batch * channels + channel) * height + y) * width + x;

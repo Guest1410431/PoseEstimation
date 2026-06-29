@@ -10,6 +10,7 @@ public class ConvolutionalLayer extends Layer
 	private final int kernalSize;
 	private final int stride;
 	private final int padding;
+	private int batchSize;
 
 	private final float[] weights;
 	private final float[] bias;
@@ -30,9 +31,9 @@ public class ConvolutionalLayer extends Layer
 		this.weightGradients = new float[weights.length];
 		this.biasGradients = new float[bias.length];
 
-		// Uniform Weight Distribution
+		// He/Kaiming Weight Distribution
 		int fanIn = inChannels * kernalSize * kernalSize;
-		double limit = Math.sqrt(6 / fanIn);
+		double limit = Math.sqrt(6 / fanIn) * Math.sqrt(2);
 		uniform(weights, limit);
 	}
 
@@ -41,14 +42,14 @@ public class ConvolutionalLayer extends Layer
 	{
 		this.input = input;
 
-		int batchSize = input.getBatchSize();
+		batchSize = input.getBatchSize();
 		int inHeight = input.getHeight();
 		int inWidth = input.getWidth();
 
 		int outHeight = Math.floorDiv(inHeight + (padding * 2) - kernalSize, stride) + 1;
 		int outWidth = Math.floorDiv(inWidth + (padding * 2) - kernalSize, stride) + 1;
 
-		Tensor output = new Tensor(batchSize, outWidth, outHeight, outChannels);
+		Tensor output = new Tensor(batchSize, outChannels, outHeight, outWidth);
 
 		for (int batch = 0; batch < batchSize; batch++)
 		{
@@ -79,7 +80,7 @@ public class ConvolutionalLayer extends Layer
 								}
 							}
 						}
-						output.set(batch, outH, outW, chout, sum);
+						output.set(batch, chout, outH, outW, sum);
 					}
 				}
 			}
@@ -136,7 +137,7 @@ public class ConvolutionalLayer extends Layer
 									int weightIndex = ((chout * inChannels + chin) * kernalSize + kernalY) * kernalSize + kernalX;
 
 									float inputValue = inputData[inputIndex];
-									float weightValue = weightGradients[weightIndex];
+									float weightValue = weights[weightIndex];
 
 									weightGradients[weightIndex] += grad * inputValue;
 									gradInputData[inputIndex] += grad * weightValue;
@@ -148,6 +149,21 @@ public class ConvolutionalLayer extends Layer
 			}
 		}
 		return gradientInput;
+	}
+	
+	@Override
+	public void updateWeights(float learningRate)
+	{
+	    float scale = 1.0f / batchSize;
+
+	    for (int i = 0; i < weights.length; i++)
+	    {
+	        weights[i] -= learningRate * weightGradients[i] * scale;
+	    }
+	    for (int i = 0; i < bias.length; i++)
+	    {
+	        bias[i] -= learningRate * biasGradients[i] * scale;
+	    }
 	}
 	
 	private static void uniform(float[]array, double limit)

@@ -23,8 +23,8 @@ public class PoseNet extends Layer
 		encoder3 = new EncoderBlock(64, 128);
 		
 		decoder1 = new DecoderBlock(128, 64, encoder3.getSkip());
-		decoder2 = new DecoderBlock(64, 32, encoder3.getSkip());
-		decoder3 = new DecoderBlock(32, 16, encoder3.getSkip());
+		decoder2 = new DecoderBlock(64, 32, encoder2.getSkip());
+		decoder3 = new DecoderBlock(32, 16, encoder1.getSkip());
 		
 		convolution = new ConvolutionalLayer(16, 15, 1, 1, 0);
 	}
@@ -46,7 +46,15 @@ public class PoseNet extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		Tensor tensor0 = convolution.backward(gradient);
+		Tensor tensor1 = decoder3.backward(tensor0);
+		Tensor tensor2 = decoder2.backward(tensor1);
+		Tensor tensor3 = decoder1.backward(tensor2);
+		
+		Tensor tensor4 = encoder3.backward(tensor3);
+		Tensor tensor5 = encoder2.backward(tensor4);
+		Tensor tensor6 = encoder1.backward(tensor5);
+		
+		return tensor6;
 	}
 }

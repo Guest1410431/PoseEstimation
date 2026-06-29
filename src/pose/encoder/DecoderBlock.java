@@ -35,7 +35,7 @@ public class DecoderBlock extends Layer
 		decoderChannels = up.getChannels();
 		skipChannels = skipTensor.getChannels();
 
-		Tensor merged = concat(input, skipTensor);
+		Tensor merged = concat(up, skipTensor);
 		return sequential.forward(merged);
 	}
 

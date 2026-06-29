@@ -29,6 +29,9 @@ public class DownSampleLayer extends Layer
 
 		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
 
+		maxValIndexY = new int[batchSize][channels][outHeight][outWidth];
+		maxValIndexX = new int[batchSize][channels][outHeight][outWidth];
+		
 		for (int batch = 0; batch < batchSize; batch++)
 		{
 			for (int channel = 0; channel < channels; channel++)

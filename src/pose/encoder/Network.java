@@ -1,5 +1,6 @@
 package pose.encoder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import pose.layer.Layer;
@@ -7,7 +8,7 @@ import pose.layer.Tensor;
 
 public class Network
 {
-	private List<Layer>layers;
+	private List<Layer>layers = new ArrayList<Layer>();
 	
 	public void add(Layer layer)
 	{

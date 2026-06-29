@@ -9,8 +9,5 @@ public abstract class Layer
 
     public abstract Tensor backward(Tensor gradient);
 
-    public void updateWeights(float learningRate)
-    {
-    	// TODO Auto-generated method stub
-    }
+    public void updateWeights(float learningRate){}
 }

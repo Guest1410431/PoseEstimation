@@ -25,7 +25,7 @@ public class SigmoidLayer extends Layer
 		{
 			float sigmoid = output.getData()[i];
 			
-			gradOutput.getData()[i] = gradOutput.getData()[i] * sigmoid * (1f-sigmoid);
+			gradOutput.getData()[i] = gradient.getData()[i] * sigmoid * (1f-sigmoid);
 		}
 		return gradOutput;
 	}

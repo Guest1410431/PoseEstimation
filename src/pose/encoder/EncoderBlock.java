@@ -10,25 +10,28 @@ import pose.layer.Tensor;
 
 public class EncoderBlock extends Layer
 {
-	private final Sequential sequential;
+	private final Sequential featureExtractor;
+	private final DownSampleLayer downSample;
 	private final SkipConnection skip;
 	
 	public EncoderBlock(int inC, int outC)
 	{
-		sequential = new Sequential()
-				.add(new ConvolutionalLayer(inC, outC, 3, 1, 1))
-				.add(new ActivationLayer())
-				.add(new ConvolutionalLayer(outC, outC, 3, 1, 1))
-				.add(new ActivationLayer())
-				.add(new DownSampleLayer(2, 2));
+		featureExtractor = new Sequential()
+		        .add(new ConvolutionalLayer(inC, outC, 3, 1, 1))
+		        .add(new ActivationLayer())
+		        .add(new ConvolutionalLayer(outC, outC, 3, 1, 1))
+		        .add(new ActivationLayer());
+
+		downSample = new DownSampleLayer(2, 2);
 		skip = new SkipConnection();
 	}
 	
 	@Override
 	public Tensor forward(Tensor input)
 	{
-		skip.save(input);
-		return sequential.forward(input);
+		Tensor features = featureExtractor.forward(input);
+		skip.save(features);
+		return downSample.forward(features);
 	}
 
 	public SkipConnection getSkip()
@@ -39,6 +42,15 @@ public class EncoderBlock extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		return sequential.backward(gradient);
+		Tensor pooledGradient = downSample.backward(gradient);
+		Tensor skipGradient = skip.getGradient();
+		
+		if(skipGradient != null)
+		{
+			pooledGradient.add(skipGradient);
+		}
+		skip.clear();
+		
+		return featureExtractor.backward(pooledGradient);
 	}
 }
