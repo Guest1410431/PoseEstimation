@@ -3,10 +3,6 @@ package pose.layer;
 import java.util.Arrays;
 import java.util.Random;
 
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-
 public class ConvolutionalLayer extends Layer
 {
 	private final int inChannels;

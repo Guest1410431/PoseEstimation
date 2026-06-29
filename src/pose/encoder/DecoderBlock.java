@@ -11,20 +11,30 @@ import pose.layer.UpSampleLayer;
 public class DecoderBlock extends Layer
 {
 	private final Sequential sequential;
+	private final UpSampleLayer upsample;
 	private final SkipConnection skip;
+
+	private int decoderChannels;
+	private int skipChannels;
 
 	public DecoderBlock(int inC, int outC, SkipConnection skip)
 	{
 		this.skip = skip;
 
-		sequential = new Sequential().add(new UpSampleLayer(2)).add(new ConvolutionalLayer(inC + outC, outC, 3, 1, 1)).add(new ActivationLayer());
+		upsample = new UpSampleLayer(2);
 
+		sequential = new Sequential().add(new ConvolutionalLayer(inC + outC, outC, 3, 1, 1)).add(new ActivationLayer()).add(new ConvolutionalLayer(outC, outC, 3, 1, 1)).add(new ActivationLayer());
 	}
 
 	@Override
 	public Tensor forward(Tensor input)
 	{
+		Tensor up = upsample.forward(input);
 		Tensor skipTensor = skip.getEncoderOutput();
+
+		decoderChannels = up.getChannels();
+		skipChannels = skipTensor.getChannels();
+
 		Tensor merged = concat(input, skipTensor);
 		return sequential.forward(merged);
 	}
@@ -41,10 +51,10 @@ public class DecoderBlock extends Layer
 		int inWidth = input.getWidth();
 		int skipHeight = skipTensor.getHeight();
 		int skipWidth = skipTensor.getWidth();
-		
+
 		int outputChannels = inChannels + skipChannels;
 		Tensor output = new Tensor(input.getBatchSize(), outputChannels, inHeight, inWidth);
-		
+
 		for (int i = 0; i < output.getBatchSize(); i++)
 		{
 			for (int h = 0; h < inChannels; h++)
@@ -74,7 +84,36 @@ public class DecoderBlock extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		// TODO Auto-generated method stub
-		return null;
+		Tensor mergedGradient = sequential.backward(gradient);
+
+		Tensor decoderGradient = new Tensor(mergedGradient.getBatchSize(), decoderChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
+		Tensor skipGradient = new Tensor(mergedGradient.getBatchSize(), skipChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
+
+		for (int b = 0; b < mergedGradient.getBatchSize(); b++)
+		{
+			for (int c = 0; c < decoderChannels; c++)
+			{
+				for (int y = 0; y < mergedGradient.getHeight(); y++)
+				{
+					for (int x = 0; x < mergedGradient.getWidth(); x++)
+					{
+						decoderGradient.set(b, c, y, x, mergedGradient.get(b, c, y, x));
+					}
+				}
+			}
+			for (int c = 0; c < skipChannels; c++)
+			{
+				for (int y = 0; y < mergedGradient.getHeight(); y++)
+				{
+					for (int x = 0; x < mergedGradient.getWidth(); x++)
+					{
+						skipGradient.set(b, c, y, x, mergedGradient.get(b, c + decoderChannels, y, x));
+					}
+				}
+			}
+		}
+		skip.setGradient(skipGradient);
+		
+		return upsample.backward(decoderGradient);
 	}
 }
