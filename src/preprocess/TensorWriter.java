@@ -5,18 +5,17 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.opencv.core.Mat;
+import pose.layer.Tensor;
 
 public class TensorWriter
 {
-	public static void saveTensor(Mat tensor, String filePath) throws IOException
+	public static void saveTensor(Tensor tensor, String filePath) throws IOException
 	{
-		int height = tensor.rows();
-		int width = tensor.cols();
-		int channels = tensor.channels();
+		int height = tensor.getHeight();
+		int width = tensor.getWidth();
+		int channels = tensor.getChannels();
 
-		float[] data = new float[height * width * channels];
-		tensor.get(0, 0, data);
+		float[] data = tensor.getData();
 
 		try (DataOutputStream dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(filePath))))
 		{

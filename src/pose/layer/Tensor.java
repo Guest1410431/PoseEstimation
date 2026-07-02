@@ -7,7 +7,7 @@ public class Tensor
 	private final int height;
 	private final int width;
 
-	private final float[] data;
+	private float[] data;
 
 	public Tensor(int batchSize, int channels, int height, int width)
 	{
@@ -30,6 +30,7 @@ public class Tensor
 
 	public float get(int batch, int channel, int y, int x)
 	{
+		checkReleased();
 		return data[index(batch, channel, y, x)];
 	}
 
@@ -55,7 +56,36 @@ public class Tensor
 		}
 	}
 
-	private int index(int batch, int channel, int y, int x)
+	public void fillChannel(int batch, int channel, float value)
+	{
+		int start = index(batch, channel, 0, 0);
+		int end = start + height * width;
+
+		for (int i = start; i < end; i++)
+		{
+			data[i] = value;
+		}
+	}
+
+	public float max(int batch, int channel, int y, int x, float value)
+	{
+		checkReleased();
+
+		int idx = index(batch, channel, y, x);
+
+		if (value > data[idx])
+		{
+			data[idx] = value;
+		}
+		return data[idx];
+	}
+
+	public boolean inBounds(int y, int x)
+	{
+		return y >= 0 && y < height && x >= 0 && x < width;
+	}
+
+	public int index(int batch, int channel, int y, int x)
 	{
 		return ((batch * channels + channel) * height + y) * width + x;
 	}
@@ -95,6 +125,19 @@ public class Tensor
 		for (int i = 0; i < data.length; i++)
 		{
 			data[i] = value;
+		}
+	}
+
+	public void release()
+	{
+		data = null;
+	}
+
+	private void checkReleased()
+	{
+		if (data == null)
+		{
+			throw new IllegalStateException("Tensor has been released.");
 		}
 	}
 

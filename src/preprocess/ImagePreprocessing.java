@@ -10,11 +10,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+
+import pose.layer.Tensor;
 
 public class ImagePreprocessing
 {
@@ -31,19 +32,19 @@ public class ImagePreprocessing
 
 	private Map<String, Map<Integer, List<Annotation>>> rawImages;
 
-	private Mat guassianKernal;
+	private Tensor guassianKernal;
 
 	public ImagePreprocessing()
 	{
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-
+		
 		readAnnotations();
 
 		System.out.println("Loaded annotations for: " + rawImages.size() + " images");
 
 		guassianKernal = createGuassianKernal();
 
-		processAllImagesSafely();
+		processAllImages();
 		System.out.println("Done");
 	}
 
@@ -74,7 +75,7 @@ public class ImagePreprocessing
 		}
 	}
 
-	private void processAllImagesSafely()
+	private void processAllImages()
 	{
 		int processed = 0;
 		int total = rawImages.size();
@@ -82,9 +83,11 @@ public class ImagePreprocessing
 		for (String file : rawImages.keySet())
 		{
 			processSingleImage(file);
-
-			System.out.println("Processed: " + ++processed + "/" + total);
-
+			
+			if (++processed % 500 == 0)
+			{
+				System.out.println("Processed: " + processed + "/" + total);
+			}
 			System.gc();
 		}
 	}
@@ -97,7 +100,7 @@ public class ImagePreprocessing
 		{
 			System.out.println("Skipping invalid image: " + fileName);
 			return;
-		}
+		}		
 		Mat resized = new Mat();
 		Imgproc.resize(input, resized, RESIZE);
 		input.release();
@@ -107,19 +110,16 @@ public class ImagePreprocessing
 
 		for (Integer personId : scaledPeople.keySet())
 		{
+			Tensor imageTensor = imageToTensor(input);
+			saveTensor(imageTensor, "res/training_data/tensorImages/" + fileName, personId);
+			
 			List<Annotation> joints = scaledPeople.get(personId);
 
-			List<Mat> heatmaps = generateHeatmaps(joints);
+			Tensor heatmaps = generateHeatmaps(joints);
 
-			Mat tensor = mergeToTensor(heatmaps);
+			saveTensor(heatmaps, "res/training_data/heatmaps/" + fileName, personId);
 
-			saveTensor(tensor, fileName, personId);
-
-			for (Mat h : heatmaps)
-			{
-				h.release();
-			}
-			tensor.release();
+			heatmaps.release();
 		}
 		resized.release();
 	}
@@ -144,80 +144,107 @@ public class ImagePreprocessing
 		return newPeople;
 	}
 
-	private Mat createGuassianKernal()
+	private Tensor createGuassianKernal()
 	{
-		Mat kernal = new Mat(GUASSIAN_BLUR, GUASSIAN_BLUR, CvType.CV_32FC1);
+		Tensor kernal = new Tensor(1, 1, GUASSIAN_BLUR, GUASSIAN_BLUR);
 		int center = GUASSIAN_BLUR / 2;
 		double twoSigmaSquared = 2 * SIGMA * SIGMA;
+
+		float max = 0;
 
 		for (int y = 0; y < GUASSIAN_BLUR; y++)
 		{
 			for (int x = 0; x < GUASSIAN_BLUR; x++)
 			{
-				double dx = x - center;
-				double dy = y - center;
+				float value = (float) Math.exp(-((x - center) * (x - center) + (y - center) * (y - center)) / twoSigmaSquared);
 
-				double value = Math.exp(-((dx * dx) + (dy * dy)) / twoSigmaSquared);
-				kernal.put(y, x, value);
+				kernal.set(0, 0, y, x, value);
+
+				if (value > max)
+				{
+					max = value;
+				}
 			}
 		}
-		Core.normalize(kernal, kernal, 0, 1, Core.NORM_MINMAX);
+		// Normalize to [0,1]
+		for (int y = 0; y < GUASSIAN_BLUR; y++)
+		{
+			for (int x = 0; x < GUASSIAN_BLUR; x++)
+			{
+				kernal.set(0, 0, y, x, kernal.get(0, 0, y, x) / max);
+			}
+		}
 		return kernal;
 	}
 
-	private Mat generateHeatmap(int xPos, int yPos)
+	private Tensor generateHeatmaps(List<Annotation> joints)
 	{
-		Mat heatmap = Mat.zeros((int) RESIZE.height, (int) RESIZE.width, CvType.CV_32FC1);
+		final int NUM_JOINTS = 16;
+		int jointId = 0;
 
-		int half = GUASSIAN_BLUR / 2;
+		Tensor heatmaps = new Tensor(1, NUM_JOINTS, (int) RESIZE.height, (int) RESIZE.width);
 
-		int x1 = (int) Math.max(0, Math.floor(xPos - half));
-		int y1 = (int) Math.max(0, Math.floor(yPos - half));
-		int x2 = (int) Math.max(0, Math.ceil(xPos - half));
-		int y2 = (int) Math.max(0, Math.ceil(yPos - half));
-
-		int kx1 = half - (xPos - x1);
-		int ky1 = half - (yPos - y1);
-		int kx2 = kx1 + (x2 - x1);
-		int ky2 = ky1 + (y2 - y1);
-		
-		if (x2 <= x1 || y2 <= y1) 
+		for (Annotation joint : joints)
 		{
-		    return Mat.zeros(heatmap.rows(), heatmap.cols(), CvType.CV_32FC1);
-		}
-		Mat roiHeatmap = heatmap.submat(y1, y2, x1, x2);
-		Mat roiKernal = guassianKernal.submat(ky1, ky2, kx1, kx2);
-
-		Core.max(roiHeatmap, roiKernal, roiHeatmap);
-
-		return heatmap;
-	}
-
-	public List<Mat> generateHeatmaps(List<Annotation> joints)
-	{
-		List<Mat> heatmaps = new ArrayList<>();
-
-		for (Annotation ann : joints)
-		{
-			heatmaps.add(generateHeatmap(ann.getxPos(), ann.getyPos()));
+			generateHeatmap(heatmaps, jointId++, joint.getxPos(), joint.getyPos());
 		}
 		return heatmaps;
 	}
 
-	private Mat mergeToTensor(List<Mat> heatmaps)
+	private void generateHeatmap(Tensor heatmaps, int channel, int xPos, int yPos)
 	{
-		Mat tensor = new Mat();
-		Core.merge(heatmaps, tensor);
+		int half = GUASSIAN_BLUR / 2;
+
+		for (int ky = 0; ky < GUASSIAN_BLUR; ky++)
+		{
+			for (int kx = 0; kx < GUASSIAN_BLUR; kx++)
+			{
+				int x = xPos + kx - half;
+				int y = yPos + ky - half;
+
+				if (x < 0 || x >= heatmaps.getWidth() || y < 0 || y >= heatmaps.getHeight())
+				{
+					continue;
+				}
+				float kernelValue = guassianKernal.get(0, 0, ky, kx);
+
+				float current = heatmaps.get(0, channel, y, x);
+
+				if (kernelValue > current)
+				{
+					heatmaps.set(0, channel, y, x, kernelValue);
+				}
+			}
+		}
+	}
+
+	private Tensor imageToTensor(Mat image)
+	{
+		Tensor tensor = new Tensor(1, 3, image.rows(), image.cols());
+
+		double[] pixel = new double[3];
+
+		for (int y = 0; y < image.rows(); y++)
+		{
+			for (int x = 0; x < image.cols(); x++)
+			{
+				image.get(y, x, pixel);
+
+				tensor.set(0, 0, y, x, (float) (pixel[2] / 255.0)); // R
+				tensor.set(0, 1, y, x, (float) (pixel[1] / 255.0)); // G
+				tensor.set(0, 2, y, x, (float) (pixel[0] / 255.0)); // B
+			}
+		}
 		return tensor;
 	}
 
-	private void saveTensor(Mat tensor, String imageName, int personId)
+	private void saveTensor(Tensor tensor, String path, int personId)
 	{
 		try
 		{
-			imageName = imageName.substring(0, imageName.length()-4);
-			
-			TensorWriter.saveTensor(tensor, "res/training_data/heatmaps/" + imageName + "_person" + personId + ".tensor");
+			path = path.substring(0, path.length() - 4);
+
+			TensorWriter.saveTensor(tensor, path + "_person" + personId + ".tensor");
 		}
 		catch (IOException e)
 		{
