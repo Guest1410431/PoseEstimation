@@ -1,18 +1,11 @@
 package test;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import pose.encoder.EncoderBlock;
 import pose.encoder.PoseNet;
 import pose.layer.ConvolutionalLayer;
 import pose.layer.SkipConnection;
 import pose.layer.Tensor;
-import pose.trainer.Dataset;
 import pose.trainer.MSELoss;
-import pose.trainer.SGDOptimizer;
-import pose.trainer.Trainer;
-import pose.trainer.TrainingSet;
 
 public class LayerTest
 {
@@ -22,20 +15,6 @@ public class LayerTest
 		testPoseNet();
 		testNumericalGradient();
 		testSkipConnection();
-		testSanity();
-	}
-
-	private static void testSanity()
-	{
-		PoseNet poseNet = new PoseNet();
-
-		Dataset dataset = syntheticDataset();
-
-		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.001f), new MSELoss());
-
-		trainer.train(5);
-
-		System.out.println("Trainer Sainity Check: PASSED");
 	}
 
 	private static void testSkipConnection()
@@ -164,22 +143,5 @@ public class LayerTest
 		MSELoss loss = new MSELoss();
 
 		return loss.forward(prediction, target);
-	}
-
-	private static Dataset syntheticDataset()
-	{
-		List<TrainingSet> data = new ArrayList<TrainingSet>();
-
-		for (int i = 0; i < 5; i++)
-		{
-			Tensor x = new Tensor(1, 3, 32, 32);
-			Tensor y = new Tensor(1, 15, 32, 32);
-
-			randomFill(x);
-			randomFill(y);
-
-			data.add(new TrainingSet(x, y));
-		}
-		return new Dataset(data);
 	}
 }

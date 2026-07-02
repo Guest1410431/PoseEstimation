@@ -104,13 +104,14 @@ public class ImagePreprocessing
 		Mat resized = new Mat();
 		Imgproc.resize(input, resized, RESIZE);
 		input.release();
-
+		
 		Map<Integer, List<Annotation>> originalPeople = rawImages.get(fileName);
 		Map<Integer, List<Annotation>> scaledPeople = scaleAnnotations(originalPeople);
 
 		for (Integer personId : scaledPeople.keySet())
 		{
-			Tensor imageTensor = imageToTensor(input);
+			Tensor imageTensor = imageToTensor(resized);
+			
 			saveTensor(imageTensor, "res/training_data/tensorImages/" + fileName, personId);
 			
 			List<Annotation> joints = scaledPeople.get(personId);
@@ -118,7 +119,7 @@ public class ImagePreprocessing
 			Tensor heatmaps = generateHeatmaps(joints);
 
 			saveTensor(heatmaps, "res/training_data/heatmaps/" + fileName, personId);
-
+			imageTensor.release();
 			heatmaps.release();
 		}
 		resized.release();
@@ -222,7 +223,7 @@ public class ImagePreprocessing
 	{
 		Tensor tensor = new Tensor(1, 3, image.rows(), image.cols());
 
-		double[] pixel = new double[3];
+		byte[] pixel = new byte[3];
 
 		for (int y = 0; y < image.rows(); y++)
 		{

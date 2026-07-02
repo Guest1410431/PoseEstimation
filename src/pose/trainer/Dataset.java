@@ -5,24 +5,25 @@ import java.util.List;
 
 public class Dataset
 {
-	private List<TrainingSet> samples;
+	private List<DataInfo> dataInfo;
 
-	public Dataset(List<TrainingSet> samples)
+	public Dataset(List<DataInfo> dataInfo)
 	{
-		this.samples = samples;
+		this.dataInfo = dataInfo;
 	}
 
 	public int size()
 	{
-		return samples.size();
+		return dataInfo.size();
 	}
-	public TrainingSet get(int index)
+
+	public DataInfo get(int index)
 	{
-		return samples.get(index);
+		return dataInfo.get(index);
 	}
+
 	public void shuffle()
 	{
-		Collections.shuffle(samples);
+		Collections.shuffle(dataInfo);
 	}
 }
-
