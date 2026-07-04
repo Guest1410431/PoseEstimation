@@ -14,6 +14,7 @@ public class UpSampleLayer extends Layer
 	{
 		// Nearest Neighbors
 		this.input = input;
+
 		int batchSize = input.getBatchSize();
 		int channels = input.getChannels();
 		int inHeight = input.getHeight();
@@ -24,23 +25,42 @@ public class UpSampleLayer extends Layer
 
 		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
 
+		float[] in = input.getData();
+		float[] out = output.getData();
+
+		int inHeightWidth = inHeight * inWidth;
+		int outHeightWidth = outHeight * outWidth;
+
 		for (int batch = 0; batch < batchSize; batch++)
 		{
+			int inBatch = batch * channels * inHeightWidth;
+			int outBatch = batch * channels * outHeightWidth;
+
 			for (int channel = 0; channel < channels; channel++)
 			{
-				for (int inY = 0; inY < inHeight; inY++)
+				int inChannel = inBatch + channel * inHeightWidth;
+				int outChannel = outBatch + channel * outHeightWidth;
+				
+				int inIndex = inChannel;
+				
+				for (int y = 0; y < inHeight; y++)
 				{
-					for (int inX = 0; inX < inWidth; inX++)
-					{
-						int outY = inY * scale;
-						int outX = inX * scale;
-						float value = input.get(batch, channel, inY, inX);
+					int outY = y * scale;
 
-						for (int i = 0; i < scale; i++)
+					for (int x = 0; x < inWidth; x++, inIndex++)
+					{
+						float value = in[inIndex];
+
+						int outX = x * scale;
+
+						for (int dy = 0; dy < scale; dy++)
 						{
-							for (int h = 0; h < scale; h++)
+							int row = outChannel + (outY + dy) * outWidth + outX;
+							int outIndex = row;
+							
+							for (int dx = 0; dx < scale; dx++, outIndex++)
 							{
-								output.set(batch, channel, outY + i, outX + h, value);
+								out[outIndex] = value;
 							}
 						}
 					}
@@ -57,29 +77,49 @@ public class UpSampleLayer extends Layer
 		int channels = gradient.getChannels();
 		int outHeight = gradient.getHeight() / scale;
 		int outWidth = gradient.getWidth() / scale;
+		int gradientWidth = gradient.getWidth();
 
 		Tensor gradOutput = new Tensor(batchSize, channels, outHeight, outWidth);
 
+		float[] grad = gradient.getData();
+		float[] out = gradOutput.getData();
+
+		int gradHeightWidth = gradient.getHeight() * gradient.getWidth();
+		int outHeightWidth = outHeight * outWidth;
+
 		for (int batch = 0; batch < batchSize; batch++)
 		{
+			int gradBatch = batch * channels * gradHeightWidth;
+			int outBatch = batch * channels * outHeightWidth;
+
 			for (int channel = 0; channel < channels; channel++)
 			{
+				int gradChannel = gradBatch + channel * gradHeightWidth;
+				int outChannel = outBatch + channel * outHeightWidth;
+
+				int outIndex = outChannel;
+				
 				for (int y = 0; y < outHeight; y++)
 				{
-					for (int x = 0; x < outWidth; x++)
+					int startY = y * scale;
+
+					for (int x = 0; x < outWidth; x++, outIndex++)
 					{
-						float sum = 0f;
-						int startY = y * scale;
 						int startX = x * scale;
+
+						float sum = 0f;
 
 						for (int dy = 0; dy < scale; dy++)
 						{
-							for (int dx = 0; dx < scale; dx++)
+							int row = gradChannel + (startY + dy) * gradientWidth + startX;
+							int gradIndex = row;
+							
+							for (int dx = 0; dx < scale; dx++, gradIndex++)
 							{
-								sum += gradient.get(batch, channel, startY + dy, startX + dx);
+								sum += grad[gradIndex];
 							}
 						}
-						gradOutput.set(batch, channel, y, x, sum);
+						out[outIndex] = sum;
 					}
 				}
 			}

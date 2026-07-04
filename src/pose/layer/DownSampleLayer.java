@@ -5,8 +5,7 @@ public class DownSampleLayer extends Layer
 	private final int kernalSize;
 	private final int stride;
 
-	private int[][][][] maxValIndexY;
-	private int[][][][] maxValIndexX;
+	private int[] maxIndices;
 
 	public DownSampleLayer(int kernalSize, int stride)
 	{
@@ -19,8 +18,10 @@ public class DownSampleLayer extends Layer
 	{
 		// Max pooling
 		this.input = input;
+
 		int batchSize = input.getBatchSize();
 		int channels = input.getChannels();
+
 		int inHeight = input.getHeight();
 		int inWidth = input.getWidth();
 
@@ -29,42 +30,57 @@ public class DownSampleLayer extends Layer
 
 		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
 
-		maxValIndexY = new int[batchSize][channels][outHeight][outWidth];
-		maxValIndexX = new int[batchSize][channels][outHeight][outWidth];
+		float[] in = input.getData();
+		float[] out = output.getData();
+
+		int inHeightWidth = inHeight * inWidth;
+		int outHeightWidth = outHeight * outWidth;
+
+		int outChannelHeightWidth = channels * outHeightWidth;
+
+		maxIndices = new int[batchSize * outChannelHeightWidth];
 
 		for (int batch = 0; batch < batchSize; batch++)
 		{
+			int inBatch = batch * channels * inHeightWidth;
+			int outBatch = batch * channels * outHeightWidth;
+
 			for (int channel = 0; channel < channels; channel++)
 			{
+				int inChannel = inBatch + channel * inHeightWidth;
+				int outChannel = outBatch + channel * outHeightWidth;
+
+				int outIndex = outChannel;
+
 				for (int outY = 0; outY < outHeight; outY++)
 				{
-					for (int outX = 0; outX < outWidth; outX++)
+					int inYBase = outY * stride;
+
+					for (int outX = 0; outX < outWidth; outX++, outChannel++)
 					{
-						float maxVal = -Float.MAX_VALUE;
-						int maxIndexX = -1;
-						int maxIndexY = -1;
+						int inXBase = outX * stride;
 
-						for (int y = 0; y < kernalSize; y++)
+						float max = -Float.MAX_VALUE;
+						int maxIndex = -1;
+
+						for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 						{
-							for (int x = 0; x < kernalSize; x++)
+							int row = inChannel + (inYBase + kernalY) * inWidth + inXBase;
+
+							for (int kernalX = 0; kernalX < kernalSize; kernalX++)
 							{
-								int inY = outY * stride + y;
-								int inX = outX * stride + x;
+								int idx = row + kernalX;
+								float value = in[idx];
 
-								float value = input.get(batch, channel, inY, inX);
-
-								if (value > maxVal)
+								if (value > max)
 								{
-									maxVal = value;
-
-									maxIndexY = inY;
-									maxIndexX = inX;
+									max = value;
+									maxIndex = idx;
 								}
 							}
 						}
-						output.set(batch, channel, outY, outX, maxVal);
-						maxValIndexY[batch][channel][outY][outX] = maxIndexY;
-						maxValIndexX[batch][channel][outY][outX] = maxIndexX;
+						out[outIndex] = max;
+	                    maxIndices[outIndex] = maxIndex;
 					}
 				}
 			}
@@ -77,22 +93,12 @@ public class DownSampleLayer extends Layer
 	{
 		Tensor gradientInput = new Tensor(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 
-		for (int batch = 0; batch < gradient.getBatchSize(); batch++)
-		{
-			for (int channel = 0; channel < gradient.getChannels(); channel++)
-			{
-				for (int outY = 0; outY < gradient.getHeight(); outY++)
-				{
-					for (int outX = 0; outX < gradient.getWidth(); outX++)
-					{
-						float grad = gradient.get(batch, channel, outY, outX);
-						int maxX = maxValIndexX[batch][channel][outY][outX];
-						int maxY = maxValIndexY[batch][channel][outY][outX];
+		float[] grad = gradient.getData();
+		float[] gradIn = gradientInput.getData();
 
-						gradientInput.add(batch, channel, maxY, maxX, grad);
-					}
-				}
-			}
+		for (int i = 0; i < grad.length; i++)
+		{
+			gradIn[maxIndices[i]] += grad[i];
 		}
 		return gradientInput;
 	}

@@ -3,6 +3,9 @@ package pose.trainer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import main.Main;
+
 import java.io.File;
 
 import pose.layer.Tensor;
@@ -107,6 +110,8 @@ public class DataLoader
 			}
 			dataInfo.add(new DataInfo(imageFile.getAbsolutePath(), heatmapFile.getAbsolutePath()));
 		}
+		System.out.println("Dataset loaded: " + (System.currentTimeMillis() - Main.getStartTime()) / 1000f + " seconds");
+
 		return new Dataset(dataInfo);
 	}
 

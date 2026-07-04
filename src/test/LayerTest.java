@@ -1,20 +1,39 @@
 package test;
 
+import main.Main;
 import pose.encoder.EncoderBlock;
 import pose.encoder.PoseNet;
 import pose.layer.ConvolutionalLayer;
 import pose.layer.SkipConnection;
 import pose.layer.Tensor;
+import pose.trainer.DataLoader;
+import pose.trainer.Dataset;
 import pose.trainer.MSELoss;
+import pose.trainer.SGDOptimizer;
+import pose.trainer.Trainer;
 
 public class LayerTest
 {
 	public static void main(String[] args)
 	{
-		testConvLayer();
-		testPoseNet();
-		testNumericalGradient();
-		testSkipConnection();
+		// testConvLayer();
+		// testPoseNet();
+		// testNumericalGradient();
+		// testSkipConnection();
+
+		testOverfitSanityCheck();
+	}
+
+	private static void testOverfitSanityCheck()
+	{
+		PoseNet poseNet = new PoseNet();
+
+		Dataset dataset = DataLoader.loadDataset("res/training_data/test/tensorImages", "res/training_data/test/heatmaps");
+
+		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.001f), new MSELoss());
+
+		trainer.train(1);
+		System.out.println("Overfit Sanity Check: PASSED " + (System.currentTimeMillis() - Main.getStartTime()));
 	}
 
 	private static void testSkipConnection()
