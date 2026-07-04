@@ -1,5 +1,7 @@
 package pose.layer;
 
+import pose.tensor.Tensor;
+
 public class UpSampleLayer extends Layer
 {
 	private final int scale;
@@ -23,7 +25,7 @@ public class UpSampleLayer extends Layer
 		int outHeight = inHeight * scale;
 		int outWidth = inWidth * scale;
 
-		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
+		Tensor output = Tensor.acquire(batchSize, channels, outHeight, outWidth);
 
 		float[] in = input.getData();
 		float[] out = output.getData();
@@ -79,7 +81,7 @@ public class UpSampleLayer extends Layer
 		int outWidth = gradient.getWidth() / scale;
 		int gradientWidth = gradient.getWidth();
 
-		Tensor gradOutput = new Tensor(batchSize, channels, outHeight, outWidth);
+		Tensor gradOutput = Tensor.acquire(batchSize, channels, outHeight, outWidth);
 
 		float[] grad = gradient.getData();
 		float[] out = gradOutput.getData();

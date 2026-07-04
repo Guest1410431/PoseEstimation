@@ -1,5 +1,7 @@
 package pose.layer;
 
+import pose.tensor.Tensor;
+
 public class SkipConnection
 {
 	private Tensor encoderOutput;

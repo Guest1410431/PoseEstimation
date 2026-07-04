@@ -15,7 +15,8 @@ import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
+import pose.tensor.TensorWriter;
 
 public class ImagePreprocessing
 {
@@ -119,8 +120,8 @@ public class ImagePreprocessing
 			Tensor heatmaps = generateHeatmaps(joints);
 
 			saveTensor(heatmaps, "res/training_data/heatmaps/" + fileName, personId);
-			imageTensor.release();
-			heatmaps.release();
+			Tensor.release(imageTensor);
+			Tensor.release(heatmaps);
 		}
 		resized.release();
 	}
@@ -147,7 +148,7 @@ public class ImagePreprocessing
 
 	private Tensor createGuassianKernal()
 	{
-		Tensor kernal = new Tensor(1, 1, GUASSIAN_BLUR, GUASSIAN_BLUR);
+		Tensor kernal = Tensor.acquire(1, 1, GUASSIAN_BLUR, GUASSIAN_BLUR);
 		int center = GUASSIAN_BLUR / 2;
 		double twoSigmaSquared = 2 * SIGMA * SIGMA;
 
@@ -183,7 +184,7 @@ public class ImagePreprocessing
 		final int NUM_JOINTS = 16;
 		int jointId = 0;
 
-		Tensor heatmaps = new Tensor(1, NUM_JOINTS, (int) RESIZE.height, (int) RESIZE.width);
+		Tensor heatmaps = Tensor.acquire(1, NUM_JOINTS, (int) RESIZE.height, (int) RESIZE.width);
 
 		for (Annotation joint : joints)
 		{
@@ -221,7 +222,7 @@ public class ImagePreprocessing
 
 	private Tensor imageToTensor(Mat image)
 	{
-		Tensor tensor = new Tensor(1, 3, image.rows(), image.cols());
+		Tensor tensor = Tensor.acquire(1, 3, image.rows(), image.cols());
 
 		byte[] pixel = new byte[3];
 

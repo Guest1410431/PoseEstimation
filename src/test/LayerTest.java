@@ -1,11 +1,10 @@
 package test;
 
-import main.Main;
 import pose.encoder.EncoderBlock;
 import pose.encoder.PoseNet;
 import pose.layer.ConvolutionalLayer;
 import pose.layer.SkipConnection;
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
 import pose.trainer.DataLoader;
 import pose.trainer.Dataset;
 import pose.trainer.MSELoss;
@@ -33,13 +32,13 @@ public class LayerTest
 		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.001f), new MSELoss());
 
 		trainer.train(1);
-		System.out.println("Overfit Sanity Check: PASSED " + (System.currentTimeMillis() - Main.getStartTime()));
+		System.out.println("Overfit Sanity Check: PASSED ");
 	}
 
 	private static void testSkipConnection()
 	{
 		EncoderBlock encoder = new EncoderBlock(3, 8);
-		Tensor input = new Tensor(1, 3, 32, 32);
+		Tensor input = Tensor.acquire(1, 3, 32, 32);
 		randomFill(input);
 
 		SkipConnection skipConnection = encoder.getSkip();
@@ -55,8 +54,8 @@ public class LayerTest
 	{
 		ConvolutionalLayer conv = new ConvolutionalLayer(3, 2, 3, 1, 1);
 
-		Tensor input = new Tensor(1, 3, 5, 5);
-		Tensor target = new Tensor(1, 2, 5, 5);
+		Tensor input = Tensor.acquire(1, 3, 5, 5);
+		Tensor target = Tensor.acquire(1, 2, 5, 5);
 		randomFill(input);
 		randomFill(target);
 
@@ -105,12 +104,12 @@ public class LayerTest
 	{
 		PoseNet poseNet = new PoseNet();
 
-		Tensor input = new Tensor(1, 3, 64, 64);
+		Tensor input = Tensor.acquire(1, 3, 64, 64);
 		randomFill(input);
 		Tensor output = poseNet.forward(input);
 		// System.out.println("Output shape: " + output);
 
-		Tensor target = new Tensor(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
+		Tensor target = Tensor.acquire(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
 		randomFill(target);
 
 		MSELoss loss = new MSELoss();
@@ -127,12 +126,12 @@ public class LayerTest
 	{
 		ConvolutionalLayer conv = new ConvolutionalLayer(3, 2, 3, 1, 1);
 
-		Tensor input = new Tensor(1, 3, 5, 5);
+		Tensor input = Tensor.acquire(1, 3, 5, 5);
 		randomFill(input);
 		Tensor output = conv.forward(input);
 		// System.out.println("Output shape: " + output);
 
-		Tensor gradientOutput = new Tensor(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
+		Tensor gradientOutput = Tensor.acquire(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
 		randomFill(gradientOutput);
 		Tensor gradIn = conv.backward(gradientOutput);
 		// System.out.println("Gradient Input shape: " + gradIn);

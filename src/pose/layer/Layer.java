@@ -1,5 +1,7 @@
 package pose.layer;
 
+import pose.tensor.Tensor;
+
 public abstract class Layer
 {
 	protected Tensor input;

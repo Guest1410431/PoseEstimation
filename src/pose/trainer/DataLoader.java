@@ -4,11 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import main.Main;
-
 import java.io.File;
 
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
+import pose.tensor.TensorReader;
 
 public class DataLoader
 {
@@ -43,14 +42,14 @@ public class DataLoader
 		int heatmapHeight = heatmap.getHeight();
 		int heatmapWidth = heatmap.getWidth();
 
-		Tensor imageBatch = new Tensor(actualBatchSize, imageChannels, imageHeight, imageWidth);
-		Tensor heatmapBatch = new Tensor(actualBatchSize, heatmapChannels, heatmapHeight, heatmapWidth);
+		Tensor imageBatch = Tensor.acquire(actualBatchSize, imageChannels, imageHeight, imageWidth);
+		Tensor heatmapBatch = Tensor.acquire(actualBatchSize, heatmapChannels, heatmapHeight, heatmapWidth);
 
 		copyIntoBatch(image, imageBatch, 0);
 		copyIntoBatch(heatmap, heatmapBatch, 0);
 
-		image.release();
-		heatmap.release();
+		Tensor.release(image);
+		Tensor.release(heatmap);
 
 		for (int i = 0; i < actualBatchSize; i++)
 		{
@@ -62,10 +61,10 @@ public class DataLoader
 			copyIntoBatch(imageTensor, imageBatch, i);
 			copyIntoBatch(heatmapTensor, heatmapBatch, i);
 
-			imageTensor.release();
-			heatmapTensor.release();
+			Tensor.release(imageTensor);
+			Tensor.release(heatmapTensor);
 		}
-		currentIndex++;
+		currentIndex += actualBatchSize;
 
 		return new Batch(imageBatch, heatmapBatch);
 	}
@@ -110,8 +109,6 @@ public class DataLoader
 			}
 			dataInfo.add(new DataInfo(imageFile.getAbsolutePath(), heatmapFile.getAbsolutePath()));
 		}
-		System.out.println("Dataset loaded: " + (System.currentTimeMillis() - Main.getStartTime()) / 1000f + " seconds");
-
 		return new Dataset(dataInfo);
 	}
 

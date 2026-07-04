@@ -1,5 +1,7 @@
 package pose.layer;
 
+import pose.tensor.Tensor;
+
 public class SigmoidLayer extends Layer
 {
 	@Override
@@ -7,7 +9,7 @@ public class SigmoidLayer extends Layer
 	{
 		this.input = input;
 		
-		output = new Tensor(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		output = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 		
 		for(int i=0; i<input.size(); i++)
 		{
@@ -19,7 +21,7 @@ public class SigmoidLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradOutput = new Tensor(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
+		Tensor gradOutput = Tensor.acquire(output.getBatchSize(), output.getChannels(), output.getHeight(), output.getWidth());
 		
 		for(int i=0; i<output.size(); i++)
 		{

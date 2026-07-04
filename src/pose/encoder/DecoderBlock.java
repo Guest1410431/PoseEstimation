@@ -5,7 +5,7 @@ import pose.layer.ConvolutionalLayer;
 import pose.layer.Layer;
 import pose.layer.Sequential;
 import pose.layer.SkipConnection;
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
 import pose.layer.UpSampleLayer;
 
 public class DecoderBlock extends Layer
@@ -45,38 +45,34 @@ public class DecoderBlock extends Layer
 		{
 			throw new IllegalArgumentException("Cannot concatenate tensors with different spatial dimensions");
 		}
+		int batchSize = input.getBatchSize();
 		int inChannels = input.getChannels();
 		int skipChannels = skipTensor.getChannels();
-		int inHeight = input.getHeight();
-		int inWidth = input.getWidth();
-		int skipHeight = skipTensor.getHeight();
-		int skipWidth = skipTensor.getWidth();
 
-		int outputChannels = inChannels + skipChannels;
-		Tensor output = new Tensor(input.getBatchSize(), outputChannels, inHeight, inWidth);
+		int height = input.getHeight();
+		int width = input.getWidth();
 
-		for (int i = 0; i < output.getBatchSize(); i++)
+		int channelSize = height * width;
+
+		Tensor output = Tensor.acquire(batchSize, inChannels + skipChannels, height, width);
+
+		float[] in = input.getData();
+		float[] skip = skipTensor.getData();
+		float[] out = output.getData();
+
+		int inputBatchSize = inChannels * channelSize;
+		int skipBatchSize = skipChannels * channelSize;
+		int outputBatchSize = (inChannels + skipChannels) * channelSize;
+
+		for (int batch = 0; batch < output.getBatchSize(); batch++)
 		{
-			for (int h = 0; h < inChannels; h++)
-			{
-				for (int y = 0; y < inHeight; y++)
-				{
-					for (int x = 0; x < inWidth; x++)
-					{
-						output.set(i, h, y, x, input.get(i, h, y, x));
-					}
-				}
-			}
-			for (int h = 0; h < skipChannels; h++)
-			{
-				for (int y = 0; y < skipHeight; y++)
-				{
-					for (int x = 0; x < skipWidth; x++)
-					{
-						output.set(i, h + inChannels, y, x, skipTensor.get(i, h, y, x));
-					}
-				}
-			}
+			int inputBatchOffset = batch * inputBatchSize;
+			int skipBatchOffset = batch * skipBatchSize;
+			int outputBatchOffset = batch * outputBatchSize;
+			// Copy decoder channels
+			System.arraycopy(in, inputBatchOffset, out, outputBatchOffset, inputBatchSize);
+			// Copy skip channels
+			System.arraycopy(skip, skipBatchOffset, out, outputBatchOffset + inputBatchSize, skipBatchSize);
 		}
 		return output;
 	}
@@ -86,34 +82,30 @@ public class DecoderBlock extends Layer
 	{
 		Tensor mergedGradient = sequential.backward(gradient);
 
-		Tensor decoderGradient = new Tensor(mergedGradient.getBatchSize(), decoderChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
-		Tensor skipGradient = new Tensor(mergedGradient.getBatchSize(), skipChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
+		Tensor decoderGradient = Tensor.acquire(mergedGradient.getBatchSize(), decoderChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
+		Tensor skipGradient = Tensor.acquire(mergedGradient.getBatchSize(), skipChannels, mergedGradient.getHeight(), mergedGradient.getWidth());
 
-		for (int b = 0; b < mergedGradient.getBatchSize(); b++)
+		float[] merged = mergedGradient.getData();
+		float[] decoder = decoderGradient.getData();
+		float[] skip = skipGradient.getData();
+
+		int channelSize = mergedGradient.getHeight() * mergedGradient.getWidth();
+
+		int decoderBatchSize = decoderChannels * channelSize;
+		int skipBatchSize = skipChannels * channelSize;
+		int mergedBatchSize = (decoderChannels + skipChannels) * channelSize;
+
+		for (int batch = 0; batch < mergedGradient.getBatchSize(); batch++)
 		{
-			for (int c = 0; c < decoderChannels; c++)
-			{
-				for (int y = 0; y < mergedGradient.getHeight(); y++)
-				{
-					for (int x = 0; x < mergedGradient.getWidth(); x++)
-					{
-						decoderGradient.set(b, c, y, x, mergedGradient.get(b, c, y, x));
-					}
-				}
-			}
-			for (int c = 0; c < skipChannels; c++)
-			{
-				for (int y = 0; y < mergedGradient.getHeight(); y++)
-				{
-					for (int x = 0; x < mergedGradient.getWidth(); x++)
-					{
-						skipGradient.set(b, c, y, x, mergedGradient.get(b, c + decoderChannels, y, x));
-					}
-				}
-			}
+			int mergedOffset = batch * mergedBatchSize;
+			int decoderOffset = batch * decoderBatchSize;
+			int skipOffset = batch * skipBatchSize;
+
+			System.arraycopy(merged, mergedOffset, decoder, decoderOffset, decoderBatchSize);
+			System.arraycopy(merged, mergedOffset + decoderBatchSize, skip, skipOffset, skipBatchSize);
 		}
-		skip.setGradient(skipGradient);
-		
+		this.skip.setGradient(skipGradient);
+
 		return upsample.backward(decoderGradient);
 	}
 }
