@@ -51,36 +51,70 @@ public class ConvolutionalLayer extends Layer
 
 		Tensor output = new Tensor(batchSize, outChannels, outHeight, outWidth);
 
+		float in[] = input.getData();
+		float out[] = output.getData();
+
+		int inHeightWidth = inHeight * inWidth;
+		int outHeightWidth = outHeight * outWidth;
+		int inChannelHeightWidth = inChannels * inHeightWidth;
+		int outChannelHeightWidth = outChannels * outHeightWidth;
+
+		int kSize = kernalSize;
+		int kernalVolume = kSize * kSize;
+
 		for (int batch = 0; batch < batchSize; batch++)
 		{
-			for (int chout = 0; chout < outChannels; chout++)
+			int inBatchOffset = batch * inChannelHeightWidth;
+			int outBatchOffset = batch * outChannelHeightWidth;
+
+			for (int channelOut = 0; channelOut < outChannels; channelOut++)
 			{
+				int outChannelOffset = channelOut * outHeightWidth;
+				int weightOutChannelOffset = channelOut * (inChannels * kernalVolume);
+
 				for (int outY = 0; outY < outHeight; outY++)
 				{
-					for (int outX = 0; outX < outWidth; outX++)
-					{
-						float sum = bias[chout];
+					int inYBase = outY * stride - padding;
+					
+					int outIndex = outBatchOffset + outChannelOffset + outY * outWidth;
 
-						for (int chin = 0; chin < inChannels; chin++)
+					for (int outX = 0; outX < outWidth; outX++, outIndex++)
+					{
+						int inXBase = outX * stride - padding;
+
+						float sum = bias[channelOut];
+
+						for (int channelIn = 0; channelIn < inChannels; channelIn++)
 						{
+							int inChannelOffset = inBatchOffset + channelIn * inHeightWidth;
+							int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalVolume;
+
 							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 							{
+								int inY = inYBase + kernalY;
+
+								if (inY < 0 || inY >= inHeight)
+								{
+									continue;
+								}
+								int inRowOffset = inChannelOffset + inY * inWidth;
+
 								for (int kernalX = 0; kernalX < kernalSize; kernalX++)
 								{
-									int inY = outY * stride + kernalY - padding;
-									int inX = outX * stride + kernalX - padding;
+									int inX = inXBase + kernalX;
 
-									if (inY < 0 || inX < 0 || inY >= inHeight || inX >= inWidth)
+									if (inX < 0 || inX >= inWidth)
 									{
 										continue;
 									}
-									int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
+									int inIndex = inRowOffset + inX;
+									int weightIndex = weightInChannelOffset + kernalY * kSize + kernalX;
 
-									sum += input.get(batch, chin, inY, inX) * weights[weightIndex];
+									sum += in[inIndex] * weights[weightIndex];
 								}
 							}
 						}
-						output.set(batch, chout, outY, outX, sum);
+						out[outIndex] = sum;
 					}
 				}
 			}
@@ -96,6 +130,10 @@ public class ConvolutionalLayer extends Layer
 		Arrays.fill(weightGradients, 0f);
 		Arrays.fill(biasGradients, 0f);
 
+		float[] in = input.getData();
+		float[] grad = gradient.getData();
+		float[] gradIn = gradientInput.getData();
+
 		int batchSize = input.getBatchSize();
 		int inHeight = input.getHeight();
 		int inWidth = input.getWidth();
@@ -103,42 +141,66 @@ public class ConvolutionalLayer extends Layer
 		int outHeight = gradient.getHeight();
 		int outWidth = gradient.getWidth();
 
-		float[] inputData = input.getData();
-		float[] gradData = gradient.getData();
-		float[] gradInputData = gradientInput.getData();
+		int inHeightWidth = inHeight * inWidth;
+		int outHeightWidth = outHeight * outWidth;
+		int inChannelHeightWidth = inChannels * inHeightWidth;
+		int outChannelHeightWidth = outChannels * outHeightWidth;
+
+		int kernalArea = kernalSize * kernalSize;
+		int kernalVolume = kernalArea * inChannels;
 
 		for (int batch = 0; batch < batchSize; batch++)
 		{
-			for (int outY = 0; outY < outHeight; outY++)
+			int inBatchOffset = batch * inChannelHeightWidth;
+			int outBatchOffset = batch * outChannelHeightWidth;
+
+			for (int channelOut = 0; channelOut < outChannels; channelOut++)
 			{
-				for (int outX = 0; outX < outWidth; outX++)
+				int gradChannelOffset = outBatchOffset + channelOut * outHeightWidth;
+				int weightOutChannelOffset = channelOut * kernalVolume;
+
+				for (int outY = 0; outY < outHeight; outY++)
 				{
-					for (int chout = 0; chout < outChannels; chout++)
+					int gradIndex = gradChannelOffset + outY * outWidth;
+					
+					int inYBase = outY * stride - padding;
+
+					for (int outX = 0; outX < outWidth; outX++, gradIndex++)
 					{
-						float grad = gradient.get(batch, chout, outY, outX);
+						float g = grad[gradIndex];
 
-						biasGradients[chout] += grad;
+						biasGradients[channelOut] += g;
 
-						for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+						int inXBase = outX * stride - padding;
+
+						for (int channelIn = 0; channelIn < inChannels; channelIn++)
 						{
-							for (int kernalX = 0; kernalX < kernalSize; kernalX++)
+							int inputChannelOffset = inBatchOffset + channelIn * inHeightWidth;
+							int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalArea;
+							int weightIndex = weightInChannelOffset;
+							
+							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 							{
-								int inY = outY * stride + kernalY - padding;
-								int inX = outX * stride + kernalX - padding;
+								int inY = inYBase + kernalY;
 
-								if (inY < 0 || inX < 0 || inY >= inHeight || inX >= inWidth)
+								if (inY < 0 || inY >= inHeight)
 								{
 									continue;
 								}
-								for (int chin = 0; chin < inChannels; chin++)
+								int inputRow = inputChannelOffset + inY * inWidth;
+
+								for (int kernalX = 0; kernalX < kernalSize; kernalX++, weightIndex++)
 								{
-									float inputValue = input.get(batch, chin, inY, inX);
+									int inX = inXBase + kernalX;
 
-									int weightIndex = chout * (kernalSize * kernalSize * inChannels) + kernalY * (kernalSize * inChannels) + kernalX * inChannels + chin;
+									if (inX < 0 || inX >= inWidth)
+									{
+										continue;
+									}
+									int inputIndex = inputRow + inX;
 
-									weightGradients[weightIndex] += grad * inputValue;
-
-									gradientInput.add(batch, chin, inY, inX, grad * weights[weightIndex]);
+									weightGradients[weightIndex] += g * in[inputIndex];
+									gradIn[inputIndex] += g * weights[weightIndex];
 								}
 							}
 						}

@@ -7,7 +7,7 @@ public class Tensor
 	private final int height;
 	private final int width;
 
-	private float[] data;
+	private float[] getDara;
 
 	public Tensor(int batchSize, int channels, int height, int width)
 	{
@@ -16,7 +16,7 @@ public class Tensor
 		this.height = height;
 		this.width = width;
 
-		this.data = new float[batchSize * channels * height * width];
+		this.getDara = new float[batchSize * channels * height * width];
 	}
 
 	public Tensor(int batchSize, int channels, int height, int width, float[] data)
@@ -25,23 +25,23 @@ public class Tensor
 		this.channels = channels;
 		this.height = height;
 		this.width = width;
-		this.data = data;
+		this.getDara = data;
 	}
 
 	public float get(int batch, int channel, int y, int x)
 	{
 		checkReleased();
-		return data[index(batch, channel, y, x)];
+		return getDara[index(batch, channel, y, x)];
 	}
 
 	public void set(int batch, int channel, int y, int x, float value)
 	{
-		data[index(batch, channel, y, x)] = value;
+		getDara[index(batch, channel, y, x)] = value;
 	}
 
 	public void add(int batch, int channel, int y, int x, float value)
 	{
-		data[index(batch, channel, y, x)] += value;
+		getDara[index(batch, channel, y, x)] += value;
 	}
 
 	public void add(Tensor other)
@@ -50,9 +50,9 @@ public class Tensor
 		{
 			throw new IllegalArgumentException("Tensor dimensions must match.");
 		}
-		for (int i = 0; i < data.length; i++)
+		for (int i = 0; i < getDara.length; i++)
 		{
-			data[i] += other.data[i];
+			getDara[i] += other.getDara[i];
 		}
 	}
 
@@ -63,7 +63,7 @@ public class Tensor
 
 		for (int i = start; i < end; i++)
 		{
-			data[i] = value;
+			getDara[i] = value;
 		}
 	}
 
@@ -73,11 +73,11 @@ public class Tensor
 
 		int idx = index(batch, channel, y, x);
 
-		if (value > data[idx])
+		if (value > getDara[idx])
 		{
-			data[idx] = value;
+			getDara[idx] = value;
 		}
-		return data[idx];
+		return getDara[idx];
 	}
 
 	public boolean inBounds(int y, int x)
@@ -112,30 +112,30 @@ public class Tensor
 
 	public float[] getData()
 	{
-		return data;
+		return getDara;
 	}
 
 	public int size()
 	{
-		return data.length;
+		return getDara.length;
 	}
 
 	public void fill(float value)
 	{
-		for (int i = 0; i < data.length; i++)
+		for (int i = 0; i < getDara.length; i++)
 		{
-			data[i] = value;
+			getDara[i] = value;
 		}
 	}
 
 	public void release()
 	{
-		data = null;
+		getDara = null;
 	}
 
 	private void checkReleased()
 	{
-		if (data == null)
+		if (getDara == null)
 		{
 			throw new IllegalStateException("Tensor has been released.");
 		}

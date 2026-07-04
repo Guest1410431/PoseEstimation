@@ -42,7 +42,7 @@ public class Trainer
 			target.release();
 			gradient.release();
 			
-			System.out.println("Epoch " + epoch + " | Loss: " + loss);
+			System.out.println("Epoch " + epoch+1 + " | Loss: " + loss);
 		}
 	}
 }
