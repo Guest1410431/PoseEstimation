@@ -6,7 +6,7 @@ import pose.layer.DownSampleLayer;
 import pose.layer.Layer;
 import pose.layer.Sequential;
 import pose.layer.SkipConnection;
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
 
 public class EncoderBlock extends Layer
 {

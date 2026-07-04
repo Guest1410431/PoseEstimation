@@ -1,6 +1,6 @@
 package pose.trainer;
 
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
 
 public class Batch
 {

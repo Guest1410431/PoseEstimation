@@ -3,6 +3,8 @@ package pose.layer;
 import java.util.Arrays;
 import java.util.Random;
 
+import pose.tensor.Tensor;
+
 public class ConvolutionalLayer extends Layer
 {
 	private final int inChannels;
@@ -49,7 +51,7 @@ public class ConvolutionalLayer extends Layer
 		int outHeight = Math.floorDiv(inHeight + (padding * 2) - kernalSize, stride) + 1;
 		int outWidth = Math.floorDiv(inWidth + (padding * 2) - kernalSize, stride) + 1;
 
-		Tensor output = new Tensor(batchSize, outChannels, outHeight, outWidth);
+		Tensor output = Tensor.acquire(batchSize, outChannels, outHeight, outWidth);
 
 		float in[] = input.getData();
 		float out[] = output.getData();
@@ -125,7 +127,7 @@ public class ConvolutionalLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradientInput = new Tensor(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		Tensor gradientInput = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 
 		Arrays.fill(weightGradients, 0f);
 		Arrays.fill(biasGradients, 0f);

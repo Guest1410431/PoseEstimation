@@ -1,6 +1,6 @@
 package pose.trainer;
 
-import pose.layer.Tensor;
+import pose.tensor.Tensor;
 
 public class MSELoss implements LossFunction
 {
@@ -20,7 +20,7 @@ public class MSELoss implements LossFunction
 	@Override
 	public Tensor backward(Tensor prediction, Tensor target)
 	{	
-		Tensor gradient = new Tensor(prediction.getBatchSize(), prediction.getChannels(), prediction.getHeight(), prediction.getWidth());
+		Tensor gradient = Tensor.acquire(prediction.getBatchSize(), prediction.getChannels(), prediction.getHeight(), prediction.getWidth());
 		
 		for(int i=0; i<prediction.size(); i++)
 		{

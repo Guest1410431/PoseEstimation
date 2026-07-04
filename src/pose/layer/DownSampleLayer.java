@@ -1,5 +1,7 @@
 package pose.layer;
 
+import pose.tensor.Tensor;
+
 public class DownSampleLayer extends Layer
 {
 	private final int kernalSize;
@@ -28,7 +30,7 @@ public class DownSampleLayer extends Layer
 		int outHeight = (inHeight - kernalSize) / stride + 1;
 		int outWidth = (inWidth - kernalSize) / stride + 1;
 
-		Tensor output = new Tensor(batchSize, channels, outHeight, outWidth);
+		Tensor output = Tensor.acquire(batchSize, channels, outHeight, outWidth);
 
 		float[] in = input.getData();
 		float[] out = output.getData();
@@ -91,7 +93,7 @@ public class DownSampleLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradientInput = new Tensor(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		Tensor gradientInput = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 
 		float[] grad = gradient.getData();
 		float[] gradIn = gradientInput.getData();

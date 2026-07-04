@@ -3,6 +3,8 @@ package pose.layer;
 import java.util.ArrayList;
 import java.util.List;
 
+import pose.tensor.Tensor;
+
 public class Sequential extends Layer
 {
 	private final List<Layer> layers = new ArrayList<Layer>();

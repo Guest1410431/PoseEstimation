@@ -1,12 +1,10 @@
-package pose.trainer;
+package pose.tensor;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
-import pose.layer.Tensor;
 
 public class TensorReader
 {
@@ -18,7 +16,7 @@ public class TensorReader
 			int height = dis.readInt();
 			int channels = dis.readInt();
 
-			Tensor tensor = new Tensor(1, channels, height, width);
+			Tensor tensor = Tensor.acquire(1, channels, height, width);
 
 			float[] data = tensor.getData();
 
