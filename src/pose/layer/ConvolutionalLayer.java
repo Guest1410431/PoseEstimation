@@ -1,8 +1,15 @@
 package pose.layer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import pose.encoder.PoseNet;
 import pose.tensor.Tensor;
 
 public class ConvolutionalLayer extends Layer
@@ -18,6 +25,9 @@ public class ConvolutionalLayer extends Layer
 	private final float[] bias;
 	private float[] weightGradients;
 	private float[] biasGradients;
+
+	private final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+	private final ExecutorService EXECUTOR = Executors.newFixedThreadPool(NUM_THREADS);
 
 	public ConvolutionalLayer(int inChannels, int outChannels, int kernalSize, int stride, int padding)
 	{
@@ -64,63 +74,93 @@ public class ConvolutionalLayer extends Layer
 		int kSize = kernalSize;
 		int kernalVolume = kSize * kSize;
 
-		for (int batch = 0; batch < batchSize; batch++)
+		int channelsPerTask = Math.max(1, (outChannels + (NUM_THREADS * 2) - 1) / (NUM_THREADS * 2));
+
+		List<Future<?>> futures = new ArrayList<Future<?>>();
+
+		for (int startChannel = 0; startChannel < outChannels; startChannel += channelsPerTask)
 		{
-			int inBatchOffset = batch * inChannelHeightWidth;
-			int outBatchOffset = batch * outChannelHeightWidth;
+			int start = startChannel;
+			int end = Math.min(start + channelsPerTask, outChannels);
 
-			for (int channelOut = 0; channelOut < outChannels; channelOut++)
-			{
-				int outChannelOffset = channelOut * outHeightWidth;
-				int weightOutChannelOffset = channelOut * (inChannels * kernalVolume);
-
-				for (int outY = 0; outY < outHeight; outY++)
+			futures.add(EXECUTOR.submit(() -> {
+				for (int batch = 0; batch < batchSize; batch++)
 				{
-					int inYBase = outY * stride - padding;
-					
-					int outIndex = outBatchOffset + outChannelOffset + outY * outWidth;
+					int inBatchOffset = batch * inChannelHeightWidth;
+					int outBatchOffset = batch * outChannelHeightWidth;
 
-					for (int outX = 0; outX < outWidth; outX++, outIndex++)
+					for (int channelOut = start; channelOut < end; channelOut++)
 					{
-						int inXBase = outX * stride - padding;
+						int outChannelOffset = channelOut * outHeightWidth;
+						int weightOutChannelOffset = channelOut * (inChannels * kernalVolume);
 
-						float sum = bias[channelOut];
-
-						for (int channelIn = 0; channelIn < inChannels; channelIn++)
+						for (int outY = 0; outY < outHeight; outY++)
 						{
-							int inChannelOffset = inBatchOffset + channelIn * inHeightWidth;
-							int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalVolume;
+							int inYBase = outY * stride - padding;
 
-							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+							int outIndex = outBatchOffset + outChannelOffset + outY * outWidth;
+
+							for (int outX = 0; outX < outWidth; outX++, outIndex++)
 							{
-								int inY = inYBase + kernalY;
+								int inXBase = outX * stride - padding;
 
-								if (inY < 0 || inY >= inHeight)
+								float sum = bias[channelOut];
+
+								for (int channelIn = 0; channelIn < inChannels; channelIn++)
 								{
-									continue;
-								}
-								int inRowOffset = inChannelOffset + inY * inWidth;
+									int inChannelOffset = inBatchOffset + channelIn * inHeightWidth;
+									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalVolume;
 
-								for (int kernalX = 0; kernalX < kernalSize; kernalX++)
-								{
-									int inX = inXBase + kernalX;
-
-									if (inX < 0 || inX >= inWidth)
+									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 									{
-										continue;
-									}
-									int inIndex = inRowOffset + inX;
-									int weightIndex = weightInChannelOffset + kernalY * kSize + kernalX;
+										int inY = inYBase + kernalY;
 
-									sum += in[inIndex] * weights[weightIndex];
+										if (inY < 0 || inY >= inHeight)
+										{
+											continue;
+										}
+										int inRowOffset = inChannelOffset + inY * inWidth;
+
+										for (int kernalX = 0; kernalX < kernalSize; kernalX++)
+										{
+											int inX = inXBase + kernalX;
+
+											if (inX < 0 || inX >= inWidth)
+											{
+												continue;
+											}
+											int inIndex = inRowOffset + inX;
+											int weightIndex = weightInChannelOffset + kernalY * kSize + kernalX;
+
+											sum += in[inIndex] * weights[weightIndex];
+										}
+									}
 								}
+								out[outIndex] = sum;
 							}
 						}
-						out[outIndex] = sum;
 					}
 				}
+			}));
+		}
+		for (Future<?> future : futures)
+		{
+			try
+			{
+				future.get();
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+				e.printStackTrace();
+			}
+			catch (ExecutionException e)
+			{
+				e.printStackTrace();
 			}
 		}
+		//System.out.println("	Forward " + this.toString() + ": " + (System.nanoTime() - PoseNet.getTime()) / 1000000000f + " seconds");
+
 		return output;
 	}
 
@@ -151,65 +191,79 @@ public class ConvolutionalLayer extends Layer
 		int kernalArea = kernalSize * kernalSize;
 		int kernalVolume = kernalArea * inChannels;
 
-		for (int batch = 0; batch < batchSize; batch++)
+		int channelsPerTask = Math.max(1, (outChannels + (NUM_THREADS * 2) - 1) / (NUM_THREADS * 2));
+
+		List<Future<?>> futures = new ArrayList<Future<?>>();
+
+		for (int startChannel = 0; startChannel < outChannels; startChannel += channelsPerTask)
 		{
-			int inBatchOffset = batch * inChannelHeightWidth;
-			int outBatchOffset = batch * outChannelHeightWidth;
+			int start = startChannel;
+			int end = Math.min(start + channelsPerTask, outChannels);
 
-			for (int channelOut = 0; channelOut < outChannels; channelOut++)
-			{
-				int gradChannelOffset = outBatchOffset + channelOut * outHeightWidth;
-				int weightOutChannelOffset = channelOut * kernalVolume;
-
-				for (int outY = 0; outY < outHeight; outY++)
+			futures.add(EXECUTOR.submit(() -> {
+				for (int batch = 0; batch < batchSize; batch++)
 				{
-					int gradIndex = gradChannelOffset + outY * outWidth;
-					
-					int inYBase = outY * stride - padding;
+					int inBatchOffset = batch * inChannelHeightWidth;
+					int outBatchOffset = batch * outChannelHeightWidth;
 
-					for (int outX = 0; outX < outWidth; outX++, gradIndex++)
+					for (int channelOut = start; channelOut < end; channelOut++)
 					{
-						float g = grad[gradIndex];
+						int gradChannelOffset = outBatchOffset + channelOut * outHeightWidth;
+						int weightOutChannelOffset = channelOut * kernalVolume;
 
-						biasGradients[channelOut] += g;
-
-						int inXBase = outX * stride - padding;
-
-						for (int channelIn = 0; channelIn < inChannels; channelIn++)
+						for (int outY = 0; outY < outHeight; outY++)
 						{
-							int inputChannelOffset = inBatchOffset + channelIn * inHeightWidth;
-							int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalArea;
-							int weightIndex = weightInChannelOffset;
-							
-							for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+							int gradIndex = gradChannelOffset + outY * outWidth;
+
+							int inYBase = outY * stride - padding;
+
+							for (int outX = 0; outX < outWidth; outX++, gradIndex++)
 							{
-								int inY = inYBase + kernalY;
+								float g = grad[gradIndex];
 
-								if (inY < 0 || inY >= inHeight)
+								biasGradients[channelOut] += g;
+
+								int inXBase = outX * stride - padding;
+
+								for (int channelIn = 0; channelIn < inChannels; channelIn++)
 								{
-									continue;
-								}
-								int inputRow = inputChannelOffset + inY * inWidth;
+									int inputChannelOffset = inBatchOffset + channelIn * inHeightWidth;
+									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalArea;
+									int weightIndex = weightInChannelOffset;
 
-								for (int kernalX = 0; kernalX < kernalSize; kernalX++, weightIndex++)
-								{
-									int inX = inXBase + kernalX;
-
-									if (inX < 0 || inX >= inWidth)
+									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
 									{
-										continue;
-									}
-									int inputIndex = inputRow + inX;
+										int inY = inYBase + kernalY;
 
-									weightGradients[weightIndex] += g * in[inputIndex];
-									gradIn[inputIndex] += g * weights[weightIndex];
+										if (inY < 0 || inY >= inHeight)
+										{
+											continue;
+										}
+										int inputRow = inputChannelOffset + inY * inWidth;
+
+										for (int kernalX = 0; kernalX < kernalSize; kernalX++, weightIndex++)
+										{
+											int inX = inXBase + kernalX;
+
+											if (inX < 0 || inX >= inWidth)
+											{
+												continue;
+											}
+											int inputIndex = inputRow + inX;
+
+											weightGradients[weightIndex] += g * in[inputIndex];
+											gradIn[inputIndex] += g * weights[weightIndex];
+										}
+									}
 								}
 							}
 						}
 					}
 				}
-			}
+			}));
 		}
+		//System.out.println("	Backward " + this.toString() + ": " + (System.nanoTime() - PoseNet.getTime()) / 1000000000f + " seconds");
+
 		return gradientInput;
 	}
 
@@ -251,5 +305,10 @@ public class ConvolutionalLayer extends Layer
 	public float[] getWeightGradients()
 	{
 		return weightGradients;
+	}
+
+	public String toString()
+	{
+		return "Convolution Layer " + inChannels + "->" + outChannels;
 	}
 }
