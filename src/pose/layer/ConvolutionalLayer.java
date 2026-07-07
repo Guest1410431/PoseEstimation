@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import pose.encoder.PoseNet;
 import pose.tensor.Tensor;
 
 public class ConvolutionalLayer extends Layer
@@ -159,8 +158,6 @@ public class ConvolutionalLayer extends Layer
 				e.printStackTrace();
 			}
 		}
-		//System.out.println("	Forward " + this.toString() + ": " + (System.nanoTime() - PoseNet.getTime()) / 1000000000f + " seconds");
-
 		return output;
 	}
 
@@ -191,37 +188,39 @@ public class ConvolutionalLayer extends Layer
 		int kernalArea = kernalSize * kernalSize;
 		int kernalVolume = kernalArea * inChannels;
 
-		int channelsPerTask = Math.max(1, (outChannels + (NUM_THREADS * 2) - 1) / (NUM_THREADS * 2));
+		int threads = Math.min(outChannels, NUM_THREADS);
 
-		List<Future<?>> futures = new ArrayList<Future<?>>();
+		List<Future<float[]>> futures = new ArrayList<Future<float[]>>(threads);
 
-		for (int startChannel = 0; startChannel < outChannels; startChannel += channelsPerTask)
+		for (int thread = 0; thread < threads; thread++)
 		{
-			int start = startChannel;
-			int end = Math.min(start + channelsPerTask, outChannels);
+			int startChannel = thread * outChannels / threads;
+			int endChannel = (thread + 1) * outChannels / threads;
 
 			futures.add(EXECUTOR.submit(() -> {
+				float[] localGradIn = new float[gradIn.length];
+
 				for (int batch = 0; batch < batchSize; batch++)
 				{
 					int inBatchOffset = batch * inChannelHeightWidth;
 					int outBatchOffset = batch * outChannelHeightWidth;
 
-					for (int channelOut = start; channelOut < end; channelOut++)
+					for (int channelOut = startChannel; channelOut < endChannel; channelOut++)
 					{
 						int gradChannelOffset = outBatchOffset + channelOut * outHeightWidth;
 						int weightOutChannelOffset = channelOut * kernalVolume;
 
+						float biasGrad = 0f;
+
 						for (int outY = 0; outY < outHeight; outY++)
 						{
 							int gradIndex = gradChannelOffset + outY * outWidth;
-
 							int inYBase = outY * stride - padding;
 
 							for (int outX = 0; outX < outWidth; outX++, gradIndex++)
 							{
 								float g = grad[gradIndex];
-
-								biasGradients[channelOut] += g;
+								biasGrad += g;
 
 								int inXBase = outX * stride - padding;
 
@@ -237,6 +236,7 @@ public class ConvolutionalLayer extends Layer
 
 										if (inY < 0 || inY >= inHeight)
 										{
+											weightIndex += kernalSize;
 											continue;
 										}
 										int inputRow = inputChannelOffset + inY * inWidth;
@@ -258,12 +258,33 @@ public class ConvolutionalLayer extends Layer
 								}
 							}
 						}
+						biasGradients[channelOut] = biasGrad;
 					}
 				}
+				return localGradIn;
 			}));
 		}
-		//System.out.println("	Backward " + this.toString() + ": " + (System.nanoTime() - PoseNet.getTime()) / 1000000000f + " seconds");
+		try
+		{
+			for (Future<float[]> future : futures)
+			{
+				float[] localGradIn = future.get();
 
+				for (int i = 0; i < gradIn.length; i++)
+				{
+					gradIn[i] += localGradIn[i];
+				}
+			}
+		}
+		catch (InterruptedException e)
+		{
+			Thread.currentThread().interrupt();
+			e.printStackTrace();
+		}
+		catch (ExecutionException e)
+		{
+			e.printStackTrace();
+		}
 		return gradientInput;
 	}
 
