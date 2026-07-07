@@ -21,45 +21,38 @@ public class Trainer
 	public void train(int epochs)
 	{
 		DataLoader loader = new DataLoader(dataset, 16);
-		
-		for(int epoch = 0; epoch < epochs; epoch++)
+
+		for (int epoch = 0; epoch < epochs; epoch++)
 		{
-			while(loader.hasNext())
+			while (loader.hasNext())
 			{
 				Batch batch = loader.next();
-				
+
 				Tensor prediction = layer.forward(batch.getImages());
 				Tensor target = batch.getHeatmaps();
-				
+
+				for (int i = 10000; i < 10020; i++)
+				{
+					System.out.printf("%d  pred=%f  target=%f%n", i, prediction.getData()[i], target.getData()[i]);
+				}
 				float loss = lossFunction.forward(prediction, target);
 				Tensor gradient = lossFunction.backward(prediction, target);
-				
+
 				layer.backward(gradient);
-				
+
 				optimizer.step(layer);
-				
+
 				Tensor.release(batch.getImages());
 				Tensor.release(batch.getHeatmaps());
 				Tensor.release(prediction);
 				Tensor.release(target);
 				Tensor.release(gradient);
-				
-				System.out.println("Epoch " + epoch+1 + " | Loss: " + loss);
+
+				System.out.println("Epoch " + (epoch + 1) + " | Loss: " + loss);
 			}
+			loader.reset();
+			loader.shuffle();
+			System.out.println("Epoch: " + (epoch + 1));
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
