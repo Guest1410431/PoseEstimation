@@ -44,7 +44,7 @@ public class ConvolutionalLayer extends Layer
 
 		// He/Kaiming Weight Distribution
 		int fanIn = inChannels * kernalSize * kernalSize;
-		double limit = Math.sqrt(6 / fanIn) * Math.sqrt(2);
+		double limit = Math.sqrt(6.0 / fanIn) * Math.sqrt(2);
 		uniform(weights, limit);
 	}
 
@@ -52,7 +52,7 @@ public class ConvolutionalLayer extends Layer
 	public Tensor forward(Tensor input)
 	{
 		this.input = input;
-
+		
 		batchSize = input.getBatchSize();
 		int inHeight = input.getHeight();
 		int inWidth = input.getWidth();
@@ -309,7 +309,7 @@ public class ConvolutionalLayer extends Layer
 
 		for (int i = 0; i < array.length; i++)
 		{
-			array[i] = (float) ((random.nextDouble() * 2 - 1) * limit);
+			array[i] = (float) ((random.nextDouble() * 2d - 1) * limit);
 		}
 	}
 
