@@ -24,35 +24,36 @@ public class Trainer
 
 		for (int epoch = 0; epoch < epochs; epoch++)
 		{
+			float epochLoss = 0;
+			int batches = 0;
+			
 			while (loader.hasNext())
 			{
 				Batch batch = loader.next();
 
 				Tensor prediction = layer.forward(batch.getImages());
 				Tensor target = batch.getHeatmaps();
-
-				for (int i = 10000; i < 10020; i++)
-				{
-					System.out.printf("%d  pred=%f  target=%f%n", i, prediction.getData()[i], target.getData()[i]);
-				}
+				
+				//System.out.println("Prediction min: " + prediction.min() + " | max: " + prediction.max() + " | mean: " + prediction.mean());
+				//System.out.println("Target---- min: " + target.min() + " | max: " + target.max() + " | mean: " + target.mean());
+				
 				float loss = lossFunction.forward(prediction, target);
+				epochLoss += loss;
+				batches++;
+				
 				Tensor gradient = lossFunction.backward(prediction, target);
-
 				layer.backward(gradient);
 
 				optimizer.step(layer);
 
 				Tensor.release(batch.getImages());
-				Tensor.release(batch.getHeatmaps());
 				Tensor.release(prediction);
 				Tensor.release(target);
 				Tensor.release(gradient);
-
-				System.out.println("Epoch " + (epoch + 1) + " | Loss: " + loss);
 			}
+			System.out.println("Epoch " + (epoch + 1) + " | Loss: " + epochLoss / batches);
 			loader.reset();
 			loader.shuffle();
-			System.out.println("Epoch: " + (epoch + 1));
 		}
 	}
 }

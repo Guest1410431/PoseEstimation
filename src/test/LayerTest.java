@@ -25,13 +25,15 @@ public class LayerTest
 
 	private static void testOverfitSanityCheck()
 	{
+		System.out.println("Running overfit sanity test");
+		
 		PoseNet poseNet = new PoseNet();
 
 		Dataset dataset = DataLoader.loadDataset("res/training_data/test/tensorImages", "res/training_data/test/heatmaps");
 
-		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.001f), new MSELoss());
+		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.01f), new MSELoss());
 
-		trainer.train(1);
+		trainer.train(50);
 		System.out.println("Overfit Sanity Check: PASSED ");
 	}
 

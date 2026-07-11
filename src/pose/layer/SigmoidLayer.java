@@ -15,6 +15,7 @@ public class SigmoidLayer extends Layer
 		{
 			output.getData()[i] = 1f / (1f + (float)Math.exp(-input.getData()[i]));
 		}
+		//System.out.println("Sigmoid---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
 		return output;
 	}
 
@@ -29,6 +30,7 @@ public class SigmoidLayer extends Layer
 			
 			gradOutput.getData()[i] = gradient.getData()[i] * sigmoid * (1f-sigmoid);
 		}
+		//System.out.println("sigmoid backward---min: " + gradOutput.min() + " | max: " + gradOutput.max() + " | mean: " + gradOutput.mean());
 		return gradOutput;
 	}
 }

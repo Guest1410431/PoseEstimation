@@ -24,6 +24,7 @@ public class Sequential extends Layer
 		{
 			tensor = layer.forward(tensor);
 		}
+		//System.out.println("sequential forward---min: " + tensor.min() + " | max: " + tensor.max() + " | mean: " + tensor.mean());
 		return tensor;
 	}
 
@@ -33,7 +34,16 @@ public class Sequential extends Layer
 		for (int i = layers.size() - 1; i >= 0; i--)
 		{
 			gradient = layers.get(i).backward(gradient);
-		}
+		}	
+		//System.out.println("sequential backward---min: " + gradient.min() + " | max: " + gradient.max() + " | mean: " + gradient.mean());
 		return gradient;
+	}
+
+	public void updateWeights(float learningRate)
+	{
+		for (Layer layer : layers)
+		{
+			layer.updateWeights(learningRate);
+		}
 	}
 }

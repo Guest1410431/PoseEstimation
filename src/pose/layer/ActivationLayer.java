@@ -15,6 +15,7 @@ public class ActivationLayer extends Layer
 		{
 			output.getData()[i] = Math.max(0f, input.getData()[i]);
 		}
+		//System.out.println("ReLu forward---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
 		return output;
 	}
 
@@ -27,6 +28,7 @@ public class ActivationLayer extends Layer
 		{
 			gradientInput.getData()[i] = output.getData()[i] > 0 ? gradient.getData()[i] : 0;
 		}
+		//System.out.println("ReLu backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
 		return gradientInput;
 	}
 }
