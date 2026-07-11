@@ -69,6 +69,7 @@ public class UpSampleLayer extends Layer
 				}
 			}
 		}
+		//System.out.println("UpSample forward---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
 		return output;
 	}
 
@@ -126,6 +127,7 @@ public class UpSampleLayer extends Layer
 				}
 			}
 		}
+		//System.out.println("UpSample backward---min: " + gradOutput.min() + " | max: " + gradOutput.max() + " | mean: " + gradOutput.mean());
 		return gradOutput;
 	}
 }

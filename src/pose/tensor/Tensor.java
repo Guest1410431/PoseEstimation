@@ -1,5 +1,7 @@
 package pose.tensor;
 
+import java.util.Collections;
+
 public class Tensor
 {
 	private final int batchSize;
@@ -117,6 +119,45 @@ public class Tensor
 	public int size()
 	{
 		return data.length;
+	}
+
+	public float min()
+	{
+		float min = data[0];
+
+		for (int i = 1; i < data.length; i++)
+		{
+			if (data[i] < min)
+			{
+				min = data[i];
+			}
+		}
+		return min;
+	}
+
+	public float max()
+	{
+		float max = data[0];
+
+		for (int i = 1; i < data.length; i++)
+		{
+			if (data[i] > max)
+			{
+				max = data[i];
+			}
+		}
+		return max;
+	}
+	
+	public float mean()
+	{
+		float sum = 0;
+
+		for (int i = 0; i < data.length; i++)
+		{
+			sum += data[i];
+		}
+		return sum/data.length;
 	}
 
 	public void fill(float value)

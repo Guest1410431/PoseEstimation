@@ -52,8 +52,6 @@ public class DownSampleLayer extends Layer
 				int inChannel = inBatch + channel * inHeightWidth;
 				int outChannel = outBatch + channel * outHeightWidth;
 
-				int outIndex = outChannel;
-
 				for (int outY = 0; outY < outHeight; outY++)
 				{
 					int inYBase = outY * stride;
@@ -81,12 +79,13 @@ public class DownSampleLayer extends Layer
 								}
 							}
 						}
-						out[outIndex] = max;
-	                    maxIndices[outIndex] = maxIndex;
+						out[outChannel] = max;
+	                    maxIndices[outChannel] = maxIndex;
 					}
 				}
 			}
 		}
+		//System.out.println("DownSample forward---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
 		return output;
 	}
 
@@ -102,6 +101,7 @@ public class DownSampleLayer extends Layer
 		{
 			gradIn[maxIndices[i]] += grad[i];
 		}
+		//System.out.println("DownSample backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
 		return gradientInput;
 	}
 }

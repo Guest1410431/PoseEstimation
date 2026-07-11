@@ -108,4 +108,9 @@ public class DecoderBlock extends Layer
 
 		return upsample.backward(decoderGradient);
 	}
+
+	public void updateWeights(float learningRate)
+	{
+		sequential.updateWeights(learningRate);
+	}
 }
