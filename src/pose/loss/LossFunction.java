@@ -1,4 +1,4 @@
-package pose.trainer;
+package pose.loss;
 
 import pose.tensor.Tensor;
 

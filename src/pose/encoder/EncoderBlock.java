@@ -51,8 +51,8 @@ public class EncoderBlock extends Layer
 		return sequential.backward(pooledGradient);
 	}
 
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
-		sequential.updateWeights(learningRate);
+		sequential.updateWeights(learningRate, beta1, beta2, epsilon, counter);
 	}
 }

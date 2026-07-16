@@ -39,11 +39,11 @@ public class Sequential extends Layer
 		return gradient;
 	}
 
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
 		for (Layer layer : layers)
 		{
-			layer.updateWeights(learningRate);
+			layer.updateWeights(learningRate, beta1, beta2, epsilon, counter);
 		}
 	}
 }

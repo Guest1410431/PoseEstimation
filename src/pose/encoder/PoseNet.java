@@ -27,11 +27,11 @@ public class PoseNet extends Layer
 		encoder2 = new EncoderBlock(32, 64);
 		encoder3 = new EncoderBlock(64, 128);
 
-		decoder1 = new DecoderBlock(128, 64, encoder3.getSkip());
-		decoder2 = new DecoderBlock(64, 32, encoder2.getSkip());
-		decoder3 = new DecoderBlock(32, 16, encoder1.getSkip());
+		decoder1 = new DecoderBlock(128, 64, 128, encoder3.getSkip());
+		decoder2 = new DecoderBlock(64, 32, 64, encoder2.getSkip());
+		decoder3 = new DecoderBlock(32, 16, 32, encoder1.getSkip());
 
-		convolution = new ConvolutionalLayer(16, 15, 1, 1, 0);
+		convolution = new ConvolutionalLayer(16, 16, 1, 1, 0);
 		
 		sigmoid = new SigmoidLayer();
 	}
@@ -62,19 +62,19 @@ public class PoseNet extends Layer
 		Tensor conv = convolution.forward(tensor6);
 		//System.out.println("Conv forward: " + (System.nanoTime() - TIME) / 1000000000f + " seconds");
 
-		Tensor sigm = sigmoid.forward(conv);
+		//Tensor sigm = sigmoid.forward(conv);
 		//System.out.println("Sigm forward: " + (System.nanoTime() - TIME) / 1000000000f + " seconds");
 		
-		return sigm;
+		return conv;
 	}
 
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor sigm = sigmoid.backward(gradient);
+		//Tensor sigm = sigmoid.backward(gradient);
 		//System.out.println("tensor6 Backward: " + (System.nanoTime() - TIME) / 1000000000f + " seconds");
 		
-		Tensor tensor0 = convolution.backward(sigm);
+		Tensor tensor0 = convolution.backward(gradient);
 		//System.out.println("tensor0 Backward: " + (System.nanoTime() - TIME) / 1000000000f + " seconds");
 
 		Tensor tensor1 = decoder3.backward(tensor0);
@@ -98,13 +98,14 @@ public class PoseNet extends Layer
 		return tensor6;
 	}
 
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
-		encoder1.updateWeights(learningRate);
-		encoder2.updateWeights(learningRate);
-		encoder3.updateWeights(learningRate);
-		decoder1.updateWeights(learningRate);
-		decoder2.updateWeights(learningRate);
-		decoder3.updateWeights(learningRate);
+		encoder1.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		encoder2.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		encoder3.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		decoder1.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		decoder2.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		decoder3.updateWeights(learningRate, beta1, beta2, epsilon, counter);
+		convolution.updateWeights(learningRate, beta1, beta2, epsilon, counter);
 	}
 }

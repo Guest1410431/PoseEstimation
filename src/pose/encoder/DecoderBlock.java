@@ -17,13 +17,11 @@ public class DecoderBlock extends Layer
 	private int decoderChannels;
 	private int skipChannels;
 
-	public DecoderBlock(int inC, int outC, SkipConnection skip)
+	public DecoderBlock(int inC, int outC, int skipC, SkipConnection skip)
 	{
 		this.skip = skip;
-
 		upsample = new UpSampleLayer(2);
-
-		sequential = new Sequential().add(new ConvolutionalLayer(inC + outC, outC, 3, 1, 1)).add(new ActivationLayer()).add(new ConvolutionalLayer(outC, outC, 3, 1, 1)).add(new ActivationLayer());
+		sequential = new Sequential().add(new ConvolutionalLayer(inC + skipC, outC, 3, 1, 1)).add(new ActivationLayer()).add(new ConvolutionalLayer(outC, outC, 3, 1, 1)).add(new ActivationLayer());
 	}
 
 	@Override
@@ -109,8 +107,8 @@ public class DecoderBlock extends Layer
 		return upsample.backward(decoderGradient);
 	}
 
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
-		sequential.updateWeights(learningRate);
+		sequential.updateWeights(learningRate, beta1, beta2, epsilon, counter);
 	}
 }

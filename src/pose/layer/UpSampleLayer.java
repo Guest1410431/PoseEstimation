@@ -130,4 +130,6 @@ public class UpSampleLayer extends Layer
 		//System.out.println("UpSample backward---min: " + gradOutput.min() + " | max: " + gradOutput.max() + " | mean: " + gradOutput.mean());
 		return gradOutput;
 	}
+	
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter){}
 }

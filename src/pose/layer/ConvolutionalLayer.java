@@ -25,6 +25,11 @@ public class ConvolutionalLayer extends Layer
 	private float[] weightGradients;
 	private float[] biasGradients;
 
+	private float[] weightM;
+	private float[] weightV;
+	private float[] biasM;
+	private float[] biasV;
+
 	private final static int NUM_THREADS = Runtime.getRuntime().availableProcessors();
 	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(NUM_THREADS);
 
@@ -46,6 +51,16 @@ public class ConvolutionalLayer extends Layer
 		int fanIn = inChannels * kernalSize * kernalSize;
 		double limit = Math.sqrt(6.0 / fanIn);
 		uniform(weights, limit);
+
+		weightM = new float[weights.length];
+		weightV = new float[weights.length];
+		biasM = new float[bias.length];
+		biasV = new float[bias.length];
+
+		Arrays.fill(weightM, 0);
+		Arrays.fill(weightV, 0);
+		Arrays.fill(biasM, 0);
+		Arrays.fill(biasV, 0);
 	}
 
 	@Override
@@ -157,8 +172,9 @@ public class ConvolutionalLayer extends Layer
 				e.printStackTrace();
 			}
 		}
-		//System.out.println("Conv forward---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
-		
+		// System.out.println("Conv forward---min: " + output.min() + " | max: " +
+		// output.max() + " | mean: " + output.mean());
+
 		return output;
 	}
 
@@ -202,7 +218,7 @@ public class ConvolutionalLayer extends Layer
 				float[] localGradIn = new float[gradIn.length];
 				float[] localWeightGradients = new float[weightGradients.length];
 				float[] localBias = new float[bias.length];
-				
+
 				for (int batch = 0; batch < batchSize; batch++)
 				{
 					int inBatchOffset = batch * inChannelHeightWidth;
@@ -273,10 +289,10 @@ public class ConvolutionalLayer extends Layer
 			{
 				GradientAccumulator accumulator = future.get();
 
-				float[]localGradIn = accumulator.getGradientInput();
-				float[]localWeightGradient = accumulator.getWeightGradient();
-				float[]localBias = accumulator.getBias();
-				
+				float[] localGradIn = accumulator.getGradientInput();
+				float[] localWeightGradient = accumulator.getWeightGradient();
+				float[] localBias = accumulator.getBias();
+
 				for (int i = 0; i < gradIn.length; i++)
 				{
 					gradIn[i] += localGradIn[i];
@@ -300,25 +316,35 @@ public class ConvolutionalLayer extends Layer
 		{
 			e.printStackTrace();
 		}
-		//System.out.println("Conv backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
-		
+		// System.out.println("Conv backward---min: " + gradientInput.min() + " | max: "
+		// + gradientInput.max() + " | mean: " + gradientInput.mean());
+
 		return gradientInput;
 	}
 
 	@Override
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
-		//System.out.println("BEFORE | Weights[0]: " + weights[0] + " | WeightGradient[0]: " + weightGradients[0]);
-		
 		for (int i = 0; i < weights.length; i++)
 		{
-			weights[i] -= learningRate * weightGradients[i];
+			weightM[i] = beta1 * weightM[i] + (1 - beta1) * weightGradients[i];
+			weightV[i] = beta2 * weightV[i] + (1 - beta2) * weightGradients[i] * weightGradients[i];
+
+			float mHat = weightM[i] / (1 - (float) Math.pow(beta1, counter));
+			float vHat = weightV[i] / (1 - (float) Math.pow(beta2, counter));
+
+			weights[i] -= learningRate * mHat / ((float) Math.sqrt(vHat) + epsilon);
 		}
 		for (int i = 0; i < bias.length; i++)
 		{
-			bias[i] -= learningRate * biasGradients[i];
+			biasM[i] = beta1 * biasM[i] + (1 - beta1) * biasGradients[i];
+			biasV[i] = beta2 * biasV[i] + (1 - beta2) * biasGradients[i] * biasGradients[i];
+
+			float mHat = biasM[i] / (1 - (float) Math.pow(beta1, counter));
+			float vHat = biasV[i] / (1 - (float) Math.pow(beta2, counter));
+
+			bias[i] -= learningRate * mHat / ((float) Math.sqrt(vHat) + epsilon);
 		}
-		//System.out.println("AFTER  | Weights[0]: " + weights[0] + " | WeightGradient[0]: " + weightGradients[0]);
 	}
 
 	private static void uniform(float[] array, double limit)
@@ -330,7 +356,7 @@ public class ConvolutionalLayer extends Layer
 			array[i] = (float) ((random.nextDouble() * 2 - 1) * limit);
 		}
 	}
-	
+
 	public float[] getWeights()
 	{
 		return weights;

@@ -104,4 +104,6 @@ public class DownSampleLayer extends Layer
 		//System.out.println("DownSample backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
 		return gradientInput;
 	}
+	
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter){}
 }

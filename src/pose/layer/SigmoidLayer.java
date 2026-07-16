@@ -33,4 +33,6 @@ public class SigmoidLayer extends Layer
 		//System.out.println("sigmoid backward---min: " + gradOutput.min() + " | max: " + gradOutput.max() + " | mean: " + gradOutput.mean());
 		return gradOutput;
 	}
+	
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter){}
 }
