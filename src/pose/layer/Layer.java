@@ -11,5 +11,5 @@ public abstract class Layer
 
 	public abstract Tensor backward(Tensor gradient);
 
-	public void updateWeights(float learningRate){};
+	public abstract void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter);
 }

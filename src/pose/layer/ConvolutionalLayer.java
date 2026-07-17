@@ -25,6 +25,11 @@ public class ConvolutionalLayer extends Layer
 	private float[] weightGradients;
 	private float[] biasGradients;
 
+	private float[] weightM;
+	private float[] weightV;
+	private float[] biasM;
+	private float[] biasV;
+
 	private final static int NUM_THREADS = Runtime.getRuntime().availableProcessors();
 	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(NUM_THREADS);
 
@@ -46,6 +51,16 @@ public class ConvolutionalLayer extends Layer
 		int fanIn = inChannels * kernalSize * kernalSize;
 		double limit = Math.sqrt(6.0 / fanIn);
 		uniform(weights, limit);
+
+		weightM = new float[weights.length];
+		weightV = new float[weights.length];
+		biasM = new float[bias.length];
+		biasV = new float[bias.length];
+
+		Arrays.fill(weightM, 0);
+		Arrays.fill(weightV, 0);
+		Arrays.fill(biasM, 0);
+		Arrays.fill(biasV, 0);
 	}
 
 	@Override
@@ -109,28 +124,19 @@ public class ConvolutionalLayer extends Layer
 									int inChannelOffset = inBatchOffset + channelIn * inHeightWidth;
 									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalVolume;
 
-									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+									int kyStart = Math.max(0, -inYBase);
+									int kxStart = Math.max(0, -inXBase);
+									int kyEnd = Math.min(kSize, inHeight - inYBase);
+									int kxEnd = Math.min(kSize, inWidth - inXBase);
+
+									for (int kernalY = kyStart; kernalY < kyEnd; kernalY++)
 									{
-										int inY = inYBase + kernalY;
+										int inRowOffset = inChannelOffset + (inYBase + kernalY) * inWidth;
+										int weightRowOffset = weightInChannelOffset + kernalY * kSize;
 
-										if (inY < 0 || inY >= inHeight)
+										for (int kernalX = kxStart; kernalX < kxEnd; kernalX++)
 										{
-											continue;
-										}
-										int inRowOffset = inChannelOffset + inY * inWidth;
-
-										for (int kernalX = 0; kernalX < kernalSize; kernalX++)
-										{
-											int inX = inXBase + kernalX;
-
-											if (inX < 0 || inX >= inWidth)
-											{
-												continue;
-											}
-											int inIndex = inRowOffset + inX;
-											int weightIndex = weightInChannelOffset + kernalY * kSize + kernalX;
-
-											sum += in[inIndex] * weights[weightIndex];
+											sum += in[inRowOffset + inXBase + kernalX] * weights[weightRowOffset + kernalX];
 										}
 									}
 								}
@@ -157,15 +163,16 @@ public class ConvolutionalLayer extends Layer
 				e.printStackTrace();
 			}
 		}
-		//System.out.println("Conv forward---min: " + output.min() + " | max: " + output.max() + " | mean: " + output.mean());
-		
+		// System.out.println("Conv forward---min: " + output.min() + " | max: " +
+		// output.max() + " | mean: " + output.mean());
+
 		return output;
 	}
 
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradientInput = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		Tensor gradientInput = Tensor.acquireZeroed(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 
 		Arrays.fill(weightGradients, 0f);
 		Arrays.fill(biasGradients, 0f);
@@ -202,7 +209,7 @@ public class ConvolutionalLayer extends Layer
 				float[] localGradIn = new float[gradIn.length];
 				float[] localWeightGradients = new float[weightGradients.length];
 				float[] localBias = new float[bias.length];
-				
+
 				for (int batch = 0; batch < batchSize; batch++)
 				{
 					int inBatchOffset = batch * inChannelHeightWidth;
@@ -231,32 +238,27 @@ public class ConvolutionalLayer extends Layer
 								{
 									int inputChannelOffset = inBatchOffset + channelIn * inHeightWidth;
 									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalArea;
-									int weightIndex = weightInChannelOffset;
 
-									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+									int kyStart = Math.max(0, -inYBase);
+									int kyEnd   = Math.min(kernalSize, inHeight - inYBase);
+									int kxStart = Math.max(0, -inXBase);
+									int kxEnd   = Math.min(kernalSize, inWidth - inXBase);
+
+									for (int kernalY = kyStart; kernalY < kyEnd; kernalY++)
 									{
-										int inY = inYBase + kernalY;
+									    int inY = inYBase + kernalY;
+									    int inputRow = inputChannelOffset + inY * inWidth;
+									    int weightRowOffset = weightInChannelOffset + kernalY * kernalSize;
 
-										if (inY < 0 || inY >= inHeight)
-										{
-											weightIndex += kernalSize;
-											continue;
-										}
-										int inputRow = inputChannelOffset + inY * inWidth;
+									    for (int kernalX = kxStart; kernalX < kxEnd; kernalX++)
+									    {
+									        int inX = inXBase + kernalX;
+									        int inputIndex = inputRow + inX;
+									        int weightIndex = weightRowOffset + kernalX;
 
-										for (int kernalX = 0; kernalX < kernalSize; kernalX++, weightIndex++)
-										{
-											int inX = inXBase + kernalX;
-
-											if (inX < 0 || inX >= inWidth)
-											{
-												continue;
-											}
-											int inputIndex = inputRow + inX;
-
-											localWeightGradients[weightIndex] += g * in[inputIndex];
-											localGradIn[inputIndex] += g * weights[weightIndex];
-										}
+									        localWeightGradients[weightIndex] += g * in[inputIndex];
+									        localGradIn[inputIndex] += g * weights[weightIndex];
+									    }
 									}
 								}
 							}
@@ -273,10 +275,10 @@ public class ConvolutionalLayer extends Layer
 			{
 				GradientAccumulator accumulator = future.get();
 
-				float[]localGradIn = accumulator.getGradientInput();
-				float[]localWeightGradient = accumulator.getWeightGradient();
-				float[]localBias = accumulator.getBias();
-				
+				float[] localGradIn = accumulator.getGradientInput();
+				float[] localWeightGradient = accumulator.getWeightGradient();
+				float[] localBias = accumulator.getBias();
+
 				for (int i = 0; i < gradIn.length; i++)
 				{
 					gradIn[i] += localGradIn[i];
@@ -300,25 +302,35 @@ public class ConvolutionalLayer extends Layer
 		{
 			e.printStackTrace();
 		}
-		//System.out.println("Conv backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
-		
+		// System.out.println("Conv backward---min: " + gradientInput.min() + " | max: "
+		// + gradientInput.max() + " | mean: " + gradientInput.mean());
+
 		return gradientInput;
 	}
 
 	@Override
-	public void updateWeights(float learningRate)
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter)
 	{
-		//System.out.println("BEFORE | Weights[0]: " + weights[0] + " | WeightGradient[0]: " + weightGradients[0]);
-		
 		for (int i = 0; i < weights.length; i++)
 		{
-			weights[i] -= learningRate * weightGradients[i];
+			weightM[i] = beta1 * weightM[i] + (1 - beta1) * weightGradients[i];
+			weightV[i] = beta2 * weightV[i] + (1 - beta2) * weightGradients[i] * weightGradients[i];
+
+			float mHat = weightM[i] / (1 - (float) Math.pow(beta1, counter));
+			float vHat = weightV[i] / (1 - (float) Math.pow(beta2, counter));
+
+			weights[i] -= learningRate * mHat / ((float) Math.sqrt(vHat) + epsilon);
 		}
 		for (int i = 0; i < bias.length; i++)
 		{
-			bias[i] -= learningRate * biasGradients[i];
+			biasM[i] = beta1 * biasM[i] + (1 - beta1) * biasGradients[i];
+			biasV[i] = beta2 * biasV[i] + (1 - beta2) * biasGradients[i] * biasGradients[i];
+
+			float mHat = biasM[i] / (1 - (float) Math.pow(beta1, counter));
+			float vHat = biasV[i] / (1 - (float) Math.pow(beta2, counter));
+
+			bias[i] -= learningRate * mHat / ((float) Math.sqrt(vHat) + epsilon);
 		}
-		//System.out.println("AFTER  | Weights[0]: " + weights[0] + " | WeightGradient[0]: " + weightGradients[0]);
 	}
 
 	private static void uniform(float[] array, double limit)
@@ -330,7 +342,7 @@ public class ConvolutionalLayer extends Layer
 			array[i] = (float) ((random.nextDouble() * 2 - 1) * limit);
 		}
 	}
-	
+
 	public float[] getWeights()
 	{
 		return weights;

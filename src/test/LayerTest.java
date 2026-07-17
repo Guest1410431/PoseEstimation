@@ -4,11 +4,12 @@ import pose.encoder.EncoderBlock;
 import pose.encoder.PoseNet;
 import pose.layer.ConvolutionalLayer;
 import pose.layer.SkipConnection;
+import pose.loss.MSELoss;
+import pose.loss.SGDOptimizer;
+import pose.loss.WeightedLogitsLoss;
 import pose.tensor.Tensor;
 import pose.trainer.DataLoader;
 import pose.trainer.Dataset;
-import pose.trainer.MSELoss;
-import pose.trainer.SGDOptimizer;
 import pose.trainer.Trainer;
 
 public class LayerTest
@@ -31,9 +32,9 @@ public class LayerTest
 
 		Dataset dataset = DataLoader.loadDataset("res/training_data/test/tensorImages", "res/training_data/test/heatmaps");
 
-		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.01f), new MSELoss());
+		Trainer trainer = new Trainer(poseNet, dataset, new SGDOptimizer(0.001f, 0.9f, 0.999f, (float) 1e-8, 1), new WeightedLogitsLoss());
 
-		trainer.train(50);
+		trainer.train(200);
 		System.out.println("Overfit Sanity Check: PASSED ");
 	}
 

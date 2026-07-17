@@ -6,7 +6,12 @@ public class DownSampleLayer extends Layer
 {
 	private final int kernalSize;
 	private final int stride;
-
+	
+	private int batchSize;
+	private int channels;
+	private int inHeight;
+	private int inWidth;	
+	
 	private int[] maxIndices;
 
 	public DownSampleLayer(int kernalSize, int stride)
@@ -18,14 +23,10 @@ public class DownSampleLayer extends Layer
 	@Override
 	public Tensor forward(Tensor input)
 	{
-		// Max pooling
-		this.input = input;
-
-		int batchSize = input.getBatchSize();
-		int channels = input.getChannels();
-
-		int inHeight = input.getHeight();
-		int inWidth = input.getWidth();
+		batchSize = input.getBatchSize();
+		channels = input.getChannels();
+		inHeight = input.getHeight();
+		inWidth = input.getWidth();
 
 		int outHeight = (inHeight - kernalSize) / stride + 1;
 		int outWidth = (inWidth - kernalSize) / stride + 1;
@@ -34,6 +35,8 @@ public class DownSampleLayer extends Layer
 
 		float[] in = input.getData();
 		float[] out = output.getData();
+		
+		Tensor.release(input);
 
 		int inHeightWidth = inHeight * inWidth;
 		int outHeightWidth = outHeight * outWidth;
@@ -92,11 +95,13 @@ public class DownSampleLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradientInput = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		Tensor gradientInput = Tensor.acquireZeroed(batchSize, channels, inHeight, inWidth);
 
 		float[] grad = gradient.getData();
 		float[] gradIn = gradientInput.getData();
 
+		Tensor.release(gradient);
+		
 		for (int i = 0; i < grad.length; i++)
 		{
 			gradIn[maxIndices[i]] += grad[i];
@@ -104,4 +109,6 @@ public class DownSampleLayer extends Layer
 		//System.out.println("DownSample backward---min: " + gradientInput.min() + " | max: " + gradientInput.max() + " | mean: " + gradientInput.mean());
 		return gradientInput;
 	}
+	
+	public void updateWeights(float learningRate, float beta1, float beta2, float epsilon, int counter){}
 }

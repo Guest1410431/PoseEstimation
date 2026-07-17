@@ -1,6 +1,8 @@
 package pose.trainer;
 
 import pose.layer.Layer;
+import pose.loss.LossFunction;
+import pose.loss.Optimizer;
 import pose.tensor.Tensor;
 
 public class Trainer
@@ -52,8 +54,14 @@ public class Trainer
 				Tensor.release(gradient);
 			}
 			System.out.println("Epoch " + (epoch + 1) + " | Loss: " + epochLoss / batches);
+			
 			loader.reset();
 			loader.shuffle();
+			
+			if(epochLoss <= 0)
+			{
+				return;
+			}
 		}
 	}
 }
