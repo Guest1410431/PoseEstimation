@@ -124,28 +124,19 @@ public class ConvolutionalLayer extends Layer
 									int inChannelOffset = inBatchOffset + channelIn * inHeightWidth;
 									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalVolume;
 
-									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+									int kyStart = Math.max(0, -inYBase);
+									int kxStart = Math.max(0, -inXBase);
+									int kyEnd = Math.min(kSize, inHeight - inYBase);
+									int kxEnd = Math.min(kSize, inWidth - inXBase);
+
+									for (int kernalY = kyStart; kernalY < kyEnd; kernalY++)
 									{
-										int inY = inYBase + kernalY;
+										int inRowOffset = inChannelOffset + (inYBase + kernalY) * inWidth;
+										int weightRowOffset = weightInChannelOffset + kernalY * kSize;
 
-										if (inY < 0 || inY >= inHeight)
+										for (int kernalX = kxStart; kernalX < kxEnd; kernalX++)
 										{
-											continue;
-										}
-										int inRowOffset = inChannelOffset + inY * inWidth;
-
-										for (int kernalX = 0; kernalX < kernalSize; kernalX++)
-										{
-											int inX = inXBase + kernalX;
-
-											if (inX < 0 || inX >= inWidth)
-											{
-												continue;
-											}
-											int inIndex = inRowOffset + inX;
-											int weightIndex = weightInChannelOffset + kernalY * kSize + kernalX;
-
-											sum += in[inIndex] * weights[weightIndex];
+											sum += in[inRowOffset + inXBase + kernalX] * weights[weightRowOffset + kernalX];
 										}
 									}
 								}
@@ -181,7 +172,7 @@ public class ConvolutionalLayer extends Layer
 	@Override
 	public Tensor backward(Tensor gradient)
 	{
-		Tensor gradientInput = Tensor.acquire(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
+		Tensor gradientInput = Tensor.acquireZeroed(input.getBatchSize(), input.getChannels(), input.getHeight(), input.getWidth());
 
 		Arrays.fill(weightGradients, 0f);
 		Arrays.fill(biasGradients, 0f);
@@ -247,32 +238,27 @@ public class ConvolutionalLayer extends Layer
 								{
 									int inputChannelOffset = inBatchOffset + channelIn * inHeightWidth;
 									int weightInChannelOffset = weightOutChannelOffset + channelIn * kernalArea;
-									int weightIndex = weightInChannelOffset;
 
-									for (int kernalY = 0; kernalY < kernalSize; kernalY++)
+									int kyStart = Math.max(0, -inYBase);
+									int kyEnd   = Math.min(kernalSize, inHeight - inYBase);
+									int kxStart = Math.max(0, -inXBase);
+									int kxEnd   = Math.min(kernalSize, inWidth - inXBase);
+
+									for (int kernalY = kyStart; kernalY < kyEnd; kernalY++)
 									{
-										int inY = inYBase + kernalY;
+									    int inY = inYBase + kernalY;
+									    int inputRow = inputChannelOffset + inY * inWidth;
+									    int weightRowOffset = weightInChannelOffset + kernalY * kernalSize;
 
-										if (inY < 0 || inY >= inHeight)
-										{
-											weightIndex += kernalSize;
-											continue;
-										}
-										int inputRow = inputChannelOffset + inY * inWidth;
+									    for (int kernalX = kxStart; kernalX < kxEnd; kernalX++)
+									    {
+									        int inX = inXBase + kernalX;
+									        int inputIndex = inputRow + inX;
+									        int weightIndex = weightRowOffset + kernalX;
 
-										for (int kernalX = 0; kernalX < kernalSize; kernalX++, weightIndex++)
-										{
-											int inX = inXBase + kernalX;
-
-											if (inX < 0 || inX >= inWidth)
-											{
-												continue;
-											}
-											int inputIndex = inputRow + inX;
-
-											localWeightGradients[weightIndex] += g * in[inputIndex];
-											localGradIn[inputIndex] += g * weights[weightIndex];
-										}
+									        localWeightGradients[weightIndex] += g * in[inputIndex];
+									        localGradIn[inputIndex] += g * weights[weightIndex];
+									    }
 									}
 								}
 							}

@@ -31,4 +31,21 @@ public class SkipConnection
 		encoderOutput = null;
 		gradient = null;
 	}
+
+	public void releaseEncoderOutput()
+	{
+		if(encoderOutput != null)
+		{
+			Tensor.release(encoderOutput);
+			encoderOutput = null;
+		}
+	}
+	public void releaseGradient()
+	{
+		if(gradient != null)
+		{
+			Tensor.release(gradient);
+			gradient = null;
+		}
+	}
 }

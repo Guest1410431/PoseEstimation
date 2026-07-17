@@ -19,7 +19,7 @@ public class PoseNet extends Layer
 	
 	private final SigmoidLayer sigmoid;
 
-	//private final float TIME = System.nanoTime();
+	private final float TIME = System.nanoTime();
 
 	public PoseNet()
 	{

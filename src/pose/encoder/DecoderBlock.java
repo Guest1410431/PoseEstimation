@@ -34,6 +34,10 @@ public class DecoderBlock extends Layer
 		skipChannels = skipTensor.getChannels();
 
 		Tensor merged = concat(up, skipTensor);
+		
+		Tensor.release(up);
+		skip.releaseEncoderOutput();
+		
 		return sequential.forward(merged);
 	}
 
@@ -102,6 +106,8 @@ public class DecoderBlock extends Layer
 			System.arraycopy(merged, mergedOffset, decoder, decoderOffset, decoderBatchSize);
 			System.arraycopy(merged, mergedOffset + decoderBatchSize, skip, skipOffset, skipBatchSize);
 		}
+		Tensor.release(mergedGradient);
+		
 		this.skip.setGradient(skipGradient);
 
 		return upsample.backward(decoderGradient);

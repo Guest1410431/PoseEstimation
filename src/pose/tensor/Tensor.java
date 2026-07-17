@@ -1,7 +1,5 @@
 package pose.tensor;
 
-import java.util.Collections;
-
 public class Tensor
 {
 	private final int batchSize;
@@ -176,6 +174,16 @@ public class Tensor
 	public static Tensor acquire(int batchSize, int channels, int height, int width)
 	{
 		return POOL.acquire(batchSize, channels, height, width);
+	}
+	
+	public static Tensor acquireZeroed(Tensor tensor)
+	{
+		return POOL.acquireZeroed(tensor.batchSize, tensor.channels, tensor.height, tensor.width);
+	}
+
+	public static Tensor acquireZeroed(int batchSize, int channels, int height, int width)
+	{
+		return POOL.acquireZeroed(batchSize, channels, height, width);
 	}
 
 	public static void release(Tensor tensor)

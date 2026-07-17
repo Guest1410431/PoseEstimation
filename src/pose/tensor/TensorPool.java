@@ -10,7 +10,7 @@ public class TensorPool
 {
 	private final Map<String, Deque<Tensor>>pool = new HashMap<String, Deque<Tensor>>();
 	
-	public Tensor acquire(int batch, int channels, int height, int width)
+	public Tensor acquireZeroed(int batch, int channels, int height, int width)
 	{
 		String key = batch + "|" + channels + "|" + height + "|"+ width;
 		
@@ -20,6 +20,20 @@ public class TensorPool
 		{
 			Tensor tensor = tensors.pop();
 			Arrays.fill(tensor.getData(), 0f);
+			return tensor;
+		}
+		return new Tensor(batch, channels, height, width);
+	}
+	
+	public Tensor acquire(int batch, int channels, int height, int width)
+	{
+		String key = batch + "|" + channels + "|" + height + "|"+ width;
+		
+		Deque<Tensor>tensors = pool.get(key);
+		
+		if(tensors != null && !tensors.isEmpty())
+		{
+			Tensor tensor = tensors.pop();
 			return tensor;
 		}
 		return new Tensor(batch, channels, height, width);
